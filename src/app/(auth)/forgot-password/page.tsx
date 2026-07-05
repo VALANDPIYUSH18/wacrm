@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MessageSquare, CheckCircle, ArrowLeft } from "lucide-react";
+export const dynamic = "force-dynamic";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
