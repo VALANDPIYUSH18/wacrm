@@ -12,6 +12,7 @@ import {
   STORAGE_KEY,
   THEME_IDS,
 } from "@/lib/themes";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -107,6 +108,7 @@ export default function RootLayout({
           {children}
           <ThemedToaster />
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
