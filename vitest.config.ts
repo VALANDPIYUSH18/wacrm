@@ -13,9 +13,10 @@ export default defineConfig({
     // identical to the CI build env so behaviour matches.
     env: {
       ENCRYPTION_KEY:
-        "0000000000000000000000000000000000000000000000000000000000000000",
-      META_APP_SECRET: "test-meta-app-secret",
+        "b8c6cf6c8922518110171cffb6d0a102099adfa37b3a8492c5120b2a02cbf704",
+      META_APP_SECRET: "204015b39c5c1378d8f594eca1774ff9",
     },
     clearMocks: true,
   },
 });
+
