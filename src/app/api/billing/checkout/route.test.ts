@@ -9,9 +9,6 @@ let mockProfile: { account_id: string; account_role: string } | null = {
   account_id: 'acct-1',
   account_role: 'owner',
 };
-let mockSubscription: { stripe_customer_id: string } | null = {
-  stripe_customer_id: 'cus_123',
-};
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn().mockImplementation(async () => ({

@@ -1,13 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
   CheckCircle2,
-  Circle,
   MessageSquare,
   UserPlus,
   Radio,
@@ -23,82 +21,72 @@ interface Step {
   description: string;
   href: string;
   icon: typeof MessageSquare;
-  completed: boolean;
+}
+
+const STEPS: Step[] = [
+  {
+    id: 'whatsapp',
+    title: 'Connect WhatsApp Number',
+    description: 'Connect your business number in 2 clicks via Meta.',
+    href: '/settings',
+    icon: MessageSquare,
+  },
+  {
+    id: 'contact',
+    title: 'Add First Contact',
+    description: 'Import customer contacts or create your first lead manually.',
+    href: '/contacts',
+    icon: UserPlus,
+  },
+  {
+    id: 'template',
+    title: 'Create Message Template',
+    description: 'Set up an approved template for broadcasts and customer notifications.',
+    href: '/settings',
+    icon: Radio,
+  },
+  {
+    id: 'automation',
+    title: 'Launch Automation / AI Bot',
+    description: 'Activate instant auto-replies or automated welcome flows.',
+    href: '/automations',
+    icon: Zap,
+  },
+];
+
+function subscribe(callback: () => void) {
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+}
+
+function getDismissedSnapshot() {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('wacrm_onboarding_dismissed') === 'true';
+}
+
+function getDismissedServerSnapshot() {
+  return false;
 }
 
 export function OnboardingWizard() {
-  const [dismissed, setDismissed] = useState(false);
-  const [steps, setSteps] = useState<Step[]>([
-    {
-      id: 'whatsapp',
-      title: 'Connect WhatsApp Number',
-      description: 'Connect your business number in 2 clicks via Meta.',
-      href: '/settings',
-      icon: MessageSquare,
-      completed: false,
-    },
-    {
-      id: 'contact',
-      title: 'Add First Contact',
-      description:
-        'Import customer contacts or create your first lead manually.',
-      href: '/contacts',
-      icon: UserPlus,
-      completed: false,
-    },
-    {
-      id: 'template',
-      title: 'Create Message Template',
-      description:
-        'Set up an approved template for broadcasts and customer notifications.',
-      href: '/settings',
-      icon: Radio,
-      completed: false,
-    },
-    {
-      id: 'automation',
-      title: 'Launch Automation / AI Bot',
-      description: 'Activate instant auto-replies or automated welcome flows.',
-      href: '/automations',
-      icon: Zap,
-      completed: false,
-    },
-  ]);
-
-  useEffect(() => {
-    // Check if dismissed previously
-    if (localStorage.getItem('wacrm_onboarding_dismissed') === 'true') {
-      setDismissed(true);
-    }
-
-    // Check status from localStorage / cache
-    const checkState = async () => {
-      try {
-        const completedWa = localStorage.getItem('wacrm_step_wa') === 'done';
-        setSteps((prev) =>
-          prev.map((s) =>
-            s.id === 'whatsapp' ? { ...s, completed: completedWa } : s
-          )
-        );
-      } catch {
-        // Fallback
-      }
-    };
-    checkState();
-  }, []);
+  const dismissed = useSyncExternalStore(
+    subscribe,
+    getDismissedSnapshot,
+    getDismissedServerSnapshot
+  );
 
   if (dismissed) return null;
 
-  const completedCount = steps.filter((s) => s.completed).length;
-  const progressPercent = Math.round((completedCount / steps.length) * 100);
-
   const handleDismiss = () => {
-    setDismissed(true);
     localStorage.setItem('wacrm_onboarding_dismissed', 'true');
+    window.dispatchEvent(new Event('storage'));
   };
 
+  const completedCount = 0;
+  const progressPercent = Math.round((completedCount / STEPS.length) * 100);
+
   return (
-    <Card className="border-primary/20 from-primary/5 via-card to-card relative overflow-hidden bg-gradient-to-r shadow-sm">
+    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-card to-card relative overflow-hidden shadow-sm">
       <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -111,8 +99,7 @@ export function OnboardingWizard() {
               </h3>
             </div>
             <p className="text-muted-foreground text-sm">
-              Complete these {steps.length} simple steps to launch your WhatsApp
-              CRM and start acquiring customers.
+              Complete these {STEPS.length} simple steps to launch your WhatsApp CRM and start acquiring customers.
             </p>
           </div>
           <button
@@ -128,13 +115,13 @@ export function OnboardingWizard() {
         <div className="mt-4 flex items-center gap-3">
           <Progress value={progressPercent} className="h-2 flex-1" />
           <span className="text-muted-foreground text-xs font-semibold">
-            {completedCount}/{steps.length} Completed ({progressPercent}%)
+            {completedCount}/{STEPS.length} Completed ({progressPercent}%)
           </span>
         </div>
 
         {/* Steps Grid */}
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((step, index) => {
+          {STEPS.map((step, index) => {
             const Icon = step.icon;
             return (
               <Link
@@ -147,13 +134,9 @@ export function OnboardingWizard() {
                     <span className="bg-muted text-primary flex h-7 w-7 items-center justify-center rounded-lg">
                       <Icon className="h-3.5 w-3.5" />
                     </span>
-                    {step.completed ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <span className="text-muted-foreground text-xs font-medium">
-                        Step {index + 1}
-                      </span>
-                    )}
+                    <span className="text-muted-foreground text-xs font-medium">
+                      Step {index + 1}
+                    </span>
                   </div>
                   <div>
                     <h4 className="text-foreground group-hover:text-primary text-sm font-medium transition-colors">

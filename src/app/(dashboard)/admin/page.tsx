@@ -17,10 +17,7 @@ import {
   MessageSquare,
   CreditCard,
   Search,
-  ExternalLink,
-  ShieldCheck,
   RefreshCw,
-  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 

@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { encrypt } from '@/lib/whatsapp/encryption';
 import {
-  registerPhoneNumber,
   subscribeWabaToApp,
   verifyPhoneNumber,
 } from '@/lib/whatsapp/meta-api';
