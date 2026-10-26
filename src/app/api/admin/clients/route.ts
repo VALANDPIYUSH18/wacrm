@@ -26,10 +26,10 @@ export async function GET() {
       .eq('id', user.id)
       .single();
 
-    // Check if user is owner/superadmin
-    if (profile?.account_role !== 'owner') {
+    // Check if user is owner/superadmin or admin
+    if (profile?.account_role !== 'owner' && profile?.account_role !== 'admin') {
       return NextResponse.json(
-        { error: 'Forbidden. Owner privileges required.' },
+        { error: 'Forbidden. Owner or Admin privileges required.' },
         { status: 403 }
       );
     }

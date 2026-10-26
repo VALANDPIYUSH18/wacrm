@@ -32,12 +32,12 @@ import type { AiProvider } from '@/lib/ai/types';
 const MASKED_KEY = '••••••••••••••••';
 
 const PROVIDER_LABEL: Record<AiProvider, string> = {
-  openai: 'OpenAI / OpenRouter',
+  openai: 'OpenAI / OpenRouter / Radox AI',
   anthropic: 'Anthropic (Claude Direct)',
 };
 
 const KEY_PLACEHOLDER: Record<AiProvider, string> = {
-  openai: 'sk-... or sk-or-...',
+  openai: 'sk-... / sk-or-... / cc_rad...',
   anthropic: 'sk-ant-...',
 };
 
@@ -271,8 +271,10 @@ export function AiConfig() {
                 <div className="flex items-center justify-between">
                   <Label htmlFor="ai-model">Model</Label>
                   {provider === 'openai' && (
-                    <span className="text-[11px] text-muted-foreground">
-                      Free OpenRouter: <button type="button" onClick={() => setModel('google/gemini-2.0-flash-exp:free')} className="text-primary hover:underline font-mono">google/gemini-2.0-flash-exp:free</button>
+                    <span className="text-[11px] text-muted-foreground flex gap-1.5">
+                      <span>Radox: <button type="button" onClick={() => setModel('gemini-3.7-flash')} className="text-primary hover:underline font-mono">gemini-3.7-flash</button></span>
+                      <span>·</span>
+                      <span>OpenRouter: <button type="button" onClick={() => setModel('google/gemini-2.0-flash-exp:free')} className="text-primary hover:underline font-mono">gemini:free</button></span>
                     </span>
                   )}
                 </div>

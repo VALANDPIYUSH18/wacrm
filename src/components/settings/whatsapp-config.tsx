@@ -430,11 +430,10 @@ export function WhatsAppConfig() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Zap className="size-4 text-[#25D366]" />
-                    Quick Connect (Recommended)
+                    Quick Connect (Meta Embedded Signup)
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    Connect your WhatsApp Business number automatically via Meta
-                    without copying API keys.
+                    Connect automatically via Meta popup. Note: Meta requires your Meta App to be approved as a registered Tech Provider (TP) or Business Solution Provider (BSP) to use this popup. Otherwise, use Direct Connect below.
                   </CardDescription>
                 </div>
               </div>

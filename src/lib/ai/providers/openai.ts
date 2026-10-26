@@ -22,21 +22,34 @@ interface OpenAiResponse {
  */
 export async function generateOpenAi(args: ProviderArgs): Promise<string> {
   const { apiKey, model, systemPrompt, messages, timeoutMs } = args
-  const isOpenRouter = apiKey.startsWith('sk-or-') || model.includes('/')
+  const isRadox = apiKey.startsWith('cc_rad')
+  const isOpenRouter = !isRadox && (apiKey.startsWith('sk-or-') || model.includes('/'))
   const endpoint = process.env.OPENAI_BASE_URL
     ? `${process.env.OPENAI_BASE_URL.replace(/\/+$/, '')}/chat/completions`
-    : isOpenRouter
-      ? OPENROUTER_URL
-      : OPENAI_URL
+    : isRadox
+      ? 'https://radoxai.com/v1/chat/completions'
+      : isOpenRouter
+        ? OPENROUTER_URL
+        : OPENAI_URL
+
+  let targetModel = model
+  if (isOpenRouter) {
+    if (model.includes('gemini') && !model.includes('/')) {
+      targetModel = 'google/gemini-2.0-flash-exp:free'
+    } else if (model.startsWith('claude-')) {
+      targetModel = `anthropic/${model}`
+    } else if (model.startsWith('gpt-')) {
+      targetModel = `openai/${model}`
+    }
+  }
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
   }
-
   if (isOpenRouter) {
-    headers['HTTP-Referer'] = 'https://wacrm.com'
-    headers['X-Title'] = 'WACRM'
+    headers['HTTP-Referer'] = 'https://wacrm.vercel.app'
+    headers['X-Title'] = 'WACRM WhatsApp CRM'
   }
 
   let res: Response
@@ -45,7 +58,7 @@ export async function generateOpenAi(args: ProviderArgs): Promise<string> {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model,
+        model: targetModel,
         messages: [
           { role: 'system', content: systemPrompt },
           ...mergeConsecutive(messages),
@@ -59,7 +72,8 @@ export async function generateOpenAi(args: ProviderArgs): Promise<string> {
   }
 
   if (!res.ok) {
-    throw await providerHttpError(isOpenRouter ? 'OpenRouter' : 'OpenAI', res)
+    const providerName = isRadox ? 'Radox AI' : isOpenRouter ? 'OpenRouter' : 'OpenAI'
+    throw await providerHttpError(providerName, res)
   }
 
   const data = (await res.json().catch(() => null)) as OpenAiResponse | null

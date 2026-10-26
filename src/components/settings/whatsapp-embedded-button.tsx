@@ -36,29 +36,43 @@ export function WhatsAppEmbeddedButton({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Load Meta Facebook SDK if not already loaded
+    const initFacebookSdk = () => {
+      if (!appId || !window.FB) return;
+      try {
+        window.FB.init({
+          appId,
+          cookie: true,
+          xfbml: true,
+          version: 'v21.0',
+        });
+        setSdkReady(true);
+      } catch (e) {
+        console.error('FB.init error:', e);
+      }
+    };
+
+    // If FB is already on window, initialize it immediately
     if (window.FB) {
-      setSdkReady(true);
+      initFacebookSdk();
       return;
     }
 
-    window.fbAsyncInit = function () {
-      if (!appId) return;
-      window.FB?.init({
-        appId,
-        cookie: true,
-        xfbml: true,
-        version: 'v21.0',
-      });
-      setSdkReady(true);
-    };
+    window.fbAsyncInit = initFacebookSdk;
 
-    const script = document.createElement('script');
-    script.id = 'facebook-jssdk';
-    script.src = 'https://connect.facebook.net/en_US/sdk.js';
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
+    // Avoid duplicate script tag if already added
+    if (!document.getElementById('facebook-jssdk')) {
+      const script = document.createElement('script');
+      script.id = 'facebook-jssdk';
+      script.src = 'https://connect.facebook.net/en_US/sdk.js';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        if (window.FB) initFacebookSdk();
+      };
+      document.body.appendChild(script);
+    } else if (window.FB) {
+      initFacebookSdk();
+    }
 
     // Meta postMessage listener for Embedded Signup session info
     const messageListener = async (event: MessageEvent) => {
@@ -107,6 +121,11 @@ export function WhatsAppEmbeddedButton({
 
     setConnecting(true);
 
+    // Timeout safety: if Meta dialog is blocked by browser popup blocker or closed silently
+    const safetyTimer = setTimeout(() => {
+      setConnecting(false);
+    }, 15000);
+
     const loginOptions: Record<string, unknown> = {
       scope: 'whatsapp_business_management,whatsapp_business_messaging',
       response_type: 'code',
@@ -116,7 +135,9 @@ export function WhatsAppEmbeddedButton({
       },
     };
 
-    window.FB.login(async (response) => {
+    const handleResponse = async (response: { authResponse?: { code?: string } }) => {
+      clearTimeout(safetyTimer);
+      console.log('FB.login response:', response);
       if (response.authResponse?.code) {
         const code = response.authResponse.code;
         const phoneNumberId = sessionStorage.getItem('wa_embedded_phone_id');
@@ -154,9 +175,28 @@ export function WhatsAppEmbeddedButton({
         }
       } else {
         setConnecting(false);
-        toast.info('WhatsApp connection canceled or closed.');
+        const status = (response as { status?: string }).status;
+        const errorMessage = (response as { error_message?: string }).error_message;
+        if (errorMessage) {
+          toast.error(`Meta Error: ${errorMessage}`);
+        } else if (status === 'unknown' || !response.authResponse) {
+          toast.info('Popup closed or blocked by browser. Please allow popups for localhost.');
+        } else {
+          toast.info(`Connection status: ${status}`);
+        }
       }
-    }, loginOptions);
+    };
+
+    try {
+      window.FB.login((response) => {
+        void handleResponse(response);
+      }, loginOptions);
+    } catch (err) {
+    clearTimeout(safetyTimer);
+    setConnecting(false);
+    console.error('FB.login exception:', err);
+    toast.error(`Meta popup error: ${err instanceof Error ? err.message : String(err)}`);
+  }
   };
 
   return (
