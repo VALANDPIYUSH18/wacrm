@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
   CheckCircle2,
+  BookOpen,
   MessageSquare,
   UserPlus,
   Radio,
@@ -102,13 +103,22 @@ export function OnboardingWizard() {
               Complete these {STEPS.length} simple steps to launch your WhatsApp CRM and start acquiring customers.
             </p>
           </div>
-          <button
-            onClick={handleDismiss}
-            className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
-            title="Dismiss checklist"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/help"
+              className="border-border bg-card hover:bg-muted text-foreground flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition"
+            >
+              <BookOpen className="text-primary h-3.5 w-3.5" />
+              <span>Implementation & Meta Guides</span>
+            </Link>
+            <button
+              onClick={handleDismiss}
+              className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
+              title="Dismiss checklist"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Progress Bar */}

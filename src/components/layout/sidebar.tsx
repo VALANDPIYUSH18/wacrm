@@ -9,6 +9,7 @@ import { useTotalUnread } from '@/hooks/use-total-unread';
 import { useUnreadNotifications } from '@/hooks/use-unread-notifications';
 import {
   Bell,
+  BookOpen,
   Bot,
   Building2,
   Crown,
@@ -96,6 +97,7 @@ const navItems: NavItem[] = [
 ];
 
 const bottomNavItems = [
+  { href: '/help', label: 'Help & Guides', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
