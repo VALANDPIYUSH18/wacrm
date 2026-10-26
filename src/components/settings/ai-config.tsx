@@ -268,12 +268,19 @@ export function AiConfig() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ai-model">Model</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="ai-model">Model</Label>
+                  {provider === 'openai' && (
+                    <span className="text-[11px] text-muted-foreground">
+                      Free OpenRouter: <button type="button" onClick={() => setModel('google/gemini-2.0-flash-exp:free')} className="text-primary hover:underline font-mono">google/gemini-2.0-flash-exp:free</button>
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="ai-model"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  placeholder={AI_PROVIDER_DEFAULT_MODEL[provider]}
+                  placeholder={provider === 'openai' ? 'google/gemini-2.0-flash-exp:free or gpt-4o-mini' : AI_PROVIDER_DEFAULT_MODEL[provider]}
                   disabled={disabled}
                 />
               </div>
