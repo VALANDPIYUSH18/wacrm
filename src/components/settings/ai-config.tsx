@@ -32,12 +32,12 @@ import type { AiProvider } from '@/lib/ai/types';
 const MASKED_KEY = '••••••••••••••••';
 
 const PROVIDER_LABEL: Record<AiProvider, string> = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic (Claude)',
+  openai: 'OpenAI / OpenRouter',
+  anthropic: 'Anthropic (Claude Direct)',
 };
 
 const KEY_PLACEHOLDER: Record<AiProvider, string> = {
-  openai: 'sk-...',
+  openai: 'sk-... or sk-or-...',
   anthropic: 'sk-ant-...',
 };
 
