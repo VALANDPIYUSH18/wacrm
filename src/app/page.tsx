@@ -454,34 +454,41 @@ export default function LandingPage() {
             </Card>
 
             {/* Growth */}
-            <Card className="border-primary shadow-lg relative bg-card">
-              <div className="absolute -top-3 right-6">
-                <Badge className="bg-primary text-primary-foreground font-semibold">Most Popular</Badge>
-              </div>
-              <CardHeader>
-                <CardTitle className="text-xl">Growth</CardTitle>
-                <CardDescription>For growing businesses and sales teams</CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-extrabold text-foreground">$79</span>
-                  <span className="text-muted-foreground"> / month</span>
+            <div className="relative pt-3 lg:-mt-3">
+              <Card className="border-2 border-primary shadow-xl overflow-visible bg-card relative">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1 text-xs font-bold text-primary-foreground shadow-md ring-2 ring-background">
+                    <Sparkles className="h-3.5 w-3.5" /> Most Popular
+                  </span>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> 5 Team Agent Seats</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> Drag-and-Drop Flow Builder</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> 10,000 Broadcasts / month</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> REST API & Webhooks (/api/v1)</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> Automated AI Lead Qualification</li>
-                </ul>
-                <Link
-                  href="/signup"
-                  className={cn(buttonVariants(), 'w-full mt-6')}
-                >
-                  Start Free Trial
-                </Link>
-              </CardContent>
-            </Card>
+                <CardHeader className="pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl font-bold">Growth</CardTitle>
+                    <Badge variant="secondary" className="text-xs text-primary bg-primary/10">Recommended</Badge>
+                  </div>
+                  <CardDescription>For growing businesses and sales teams</CardDescription>
+                  <div className="mt-4">
+                    <span className="text-4xl font-extrabold text-foreground">$79</span>
+                    <span className="text-muted-foreground"> / month</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ul className="space-y-2.5 text-sm text-muted-foreground">
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> <span className="font-medium text-foreground">5 Team Agent Seats</span></li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> Drag-and-Drop Flow Builder</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> 10,000 Broadcasts / month</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> REST API & Webhooks (/api/v1)</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" /> Automated AI Lead Qualification</li>
+                  </ul>
+                  <Link
+                    href="/signup"
+                    className={cn(buttonVariants({ size: 'lg' }), 'w-full mt-6 shadow-md')}
+                  >
+                    Start Free Trial
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Scale */}
             <Card className="border-border">
