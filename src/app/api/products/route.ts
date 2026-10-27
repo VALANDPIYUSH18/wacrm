@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const { supabase, accountId } = await requireRole('agent');
     const body = await request.json();
 
-    const { title, description, price, currency = 'INR', sku, image_url, is_active = true } = body;
+    const { title, description, price, currency = 'INR', sku, category, image_url, is_active = true } = body;
 
     if (!title || typeof title !== 'string' || !title.trim()) {
       return NextResponse.json({ error: 'Product title is required' }, { status: 400 });
@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         price: parsedPrice,
         currency: String(currency).trim().toUpperCase(),
         sku: sku ? String(sku).trim() : null,
+        category: category ? String(category).trim() : null,
         image_url: image_url ? String(image_url).trim() : null,
         is_active: Boolean(is_active),
       })

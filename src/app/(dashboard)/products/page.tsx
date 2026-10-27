@@ -14,6 +14,7 @@ import {
   Tag,
   DollarSign,
   Package,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { canEditSettings } from '@/lib/auth/roles';
@@ -50,6 +51,7 @@ export default function ProductsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -164,6 +166,21 @@ export default function ProductsPage() {
     }
   };
 
+  const handleSeedDemo = async () => {
+    setSeeding(true);
+    try {
+      const res = await fetch('/api/products/seed', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to seed catalog');
+      toast.success(`Seeded ${data.count || 8} demo products`);
+      void fetchProducts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error seeding catalog');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const filtered = products.filter((p) => {
     const q = search.toLowerCase();
     return (
@@ -191,9 +208,25 @@ export default function ProductsPage() {
         </div>
 
         {canManage && (
-          <Button onClick={openCreateModal} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" /> Add Product
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSeedDemo}
+              disabled={seeding}
+              className="flex items-center gap-1.5"
+            >
+              {seeding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 text-amber-500" />
+              )}
+              Load Demo Catalog
+            </Button>
+            <Button onClick={openCreateModal} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Add Product
+            </Button>
+          </div>
         )}
       </div>
 

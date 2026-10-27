@@ -10,6 +10,7 @@ export interface Product {
   price: number;
   currency: string;
   sku: string | null;
+  category: string | null;
   image_url: string | null;
   is_active: boolean;
   created_at: string;
