@@ -1,0 +1,142 @@
+import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { getGatewayConfig } from '@/lib/commerce/gateway';
+import { sendMessageToConversation } from '@/lib/whatsapp/send-message';
+
+function getAdmin() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+/**
+ * POST /api/payments/webhook/stripe
+ * Listens for checkout.session.completed events from Stripe
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const rawBody = await request.text();
+    const signatureHeader = request.headers.get('stripe-signature');
+
+    let event: any;
+    try {
+      event = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const session = event?.data?.object;
+    const metadata = session?.metadata || {};
+    const orderId = metadata.orderId;
+    const accountId = metadata.accountId;
+
+    const admin = getAdmin();
+
+    let order: any = null;
+    if (orderId) {
+      const { data } = await admin
+        .from('payment_orders')
+        .select('*, products(title)')
+        .eq('id', orderId)
+        .maybeSingle();
+      order = data;
+    } else if (session?.id) {
+      const { data } = await admin
+        .from('payment_orders')
+        .select('*, products(title)')
+        .eq('provider_payment_link_id', session.id)
+        .maybeSingle();
+      order = data;
+    }
+
+    const targetAccountId = accountId || order?.account_id;
+
+    // Verify Stripe signature if webhook secret is configured
+    if (targetAccountId && signatureHeader) {
+      const config = await getGatewayConfig(targetAccountId, 'stripe');
+      if (config?.webhookSecret) {
+        // Parse t=timestamp,v1=signature
+        const items = signatureHeader.split(',');
+        const timestamp = items.find((i) => i.startsWith('t='))?.slice(2);
+        const sig = items.find((i) => i.startsWith('v1='))?.slice(3);
+
+        if (timestamp && sig) {
+          const payload = `${timestamp}.${rawBody}`;
+          const expectedSig = crypto
+            .createHmac('sha256', config.webhookSecret)
+            .update(payload)
+            .digest('hex');
+
+          if (expectedSig !== sig) {
+            console.warn('Stripe webhook signature mismatch');
+            return NextResponse.json({ error: 'Signature mismatch' }, { status: 400 });
+          }
+        }
+      }
+    }
+
+    if (event.type === 'checkout.session.completed') {
+      if (order && order.status !== 'paid') {
+        await admin
+          .from('payment_orders')
+          .update({
+            status: 'paid',
+            paid_at: new Date().toISOString(),
+          })
+          .eq('id', order.id);
+
+        if (order.conversation_id) {
+          const { data: conv } = await admin
+            .from('conversations')
+            .select('id, contact_id, contacts(phone, name)')
+            .eq('id', order.conversation_id)
+            .single();
+
+          const contactPhone = (conv?.contacts as any)?.phone;
+          const currencySymbol = order.currency === 'INR' ? '₹' : `${order.currency} `;
+          const itemTitle = order.products?.title || 'your order';
+
+          const receiptMessage = `✅ *Payment Received!*\n\nWe have received your payment of *${currencySymbol}${Number(order.amount).toLocaleString()}* for *${itemTitle}*.\n\nStripe Reference: \`${session.id || order.id.slice(0, 8)}\`\nStatus: *Completed*\n\nThank you for your purchase!`;
+
+          let sent = false;
+          try {
+            await sendMessageToConversation(admin, order.account_id, {
+              conversationId: order.conversation_id,
+              messageType: 'text',
+              contentText: receiptMessage,
+            });
+            sent = true;
+          } catch (sendErr) {
+            console.error('Failed to dispatch receipt via sendMessageToConversation:', sendErr);
+          }
+
+          if (!sent) {
+            await admin.from('messages').insert({
+              account_id: order.account_id,
+              conversation_id: order.conversation_id,
+              sender_type: 'bot',
+              content_text: receiptMessage,
+              message_type: 'text',
+              status: 'delivered',
+              metadata: {
+                type: 'payment_receipt',
+                orderId: order.id,
+                provider: 'stripe',
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({ received: true });
+  } catch (err) {
+    console.error('Stripe webhook processing error:', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Webhook error' },
+      { status: 500 }
+    );
+  }
+}

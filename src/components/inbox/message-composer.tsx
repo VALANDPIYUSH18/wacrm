@@ -19,6 +19,7 @@ import {
   X,
   Loader2,
   Sparkles,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GatedButton } from "@/components/ui/gated-button";
@@ -37,6 +38,7 @@ import {
   MEDIA_MAX_BYTES_BY_KIND,
 } from "@/lib/storage/upload-media";
 import { ReplyQuote } from "./reply-quote";
+import { ProductPaymentModal } from "./product-payment-modal";
 
 /** Media content types an agent can send from the composer. */
 export type ComposerMediaKind = "image" | "video" | "document" | "audio";
@@ -124,6 +126,7 @@ export function MessageComposer({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [drafting, setDrafting] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Media attachment state. `draft` holds an uploaded-but-not-yet-sent
@@ -574,6 +577,18 @@ export function MessageComposer({
             size="sm"
             canAct={!readOnly}
             gateReason="send messages"
+            title={readOnly ? undefined : "Send payment request"}
+            className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-green-600"
+            onClick={() => setPaymentModalOpen(true)}
+          >
+            <CreditCard className="h-4 w-4" />
+          </GatedButton>
+
+          <GatedButton
+            variant="ghost"
+            size="sm"
+            canAct={!readOnly}
+            gateReason="send messages"
             disabled={drafting}
             title={readOnly ? undefined : "Draft a reply with AI"}
             className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-primary"
@@ -631,6 +646,12 @@ export function MessageComposer({
           Tap the ✨ to draft a reply with AI — you can edit it before sending
         </p>
       )}
+
+      <ProductPaymentModal
+        open={paymentModalOpen}
+        onOpenChange={setPaymentModalOpen}
+        conversationId={conversationId}
+      />
     </div>
   );
 }

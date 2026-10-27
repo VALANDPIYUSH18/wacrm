@@ -11,6 +11,7 @@ import { ProfileForm } from '@/components/settings/profile-form';
 import { SecurityPanel } from '@/components/settings/security-panel';
 import { AppearancePanel } from '@/components/settings/appearance-panel';
 import { BillingPanel } from '@/components/settings/billing-panel';
+import { PaymentsConfig } from '@/components/settings/payments-config';
 import { WhatsAppConfig } from '@/components/settings/whatsapp-config';
 import { TemplateManager } from '@/components/settings/template-manager';
 import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel';
@@ -57,6 +58,7 @@ export default function SettingsPage() {
     security: <SecurityPanel />,
     appearance: <AppearancePanel />,
     billing: <BillingPanel />,
+    payments: <PaymentsConfig />,
     whatsapp: <WhatsAppConfig />,
     templates: <TemplateManager />,
     fields: <FieldsAndTagsPanel />,
