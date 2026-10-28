@@ -1035,13 +1035,16 @@ async function findOrCreateConversation(
   configOwnerUserId: string,
   contactId: string,
 ) {
-  // Look for existing conversation in this account
+  // Look for existing conversation in this account. Order descending and
+  // limit 1 so concurrent historical rows never throw PGRST116.
   const { data: existing, error: findError } = await supabaseAdmin()
     .from('conversations')
     .select('*')
     .eq('account_id', accountId)
     .eq('contact_id', contactId)
-    .single()
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   if (!findError && existing) {
     return { conversation: existing, created: false }
@@ -1060,6 +1063,21 @@ async function findOrCreateConversation(
     .single()
 
   if (createError) {
+    // If a concurrent insert occurred and the unique constraint tripped (23505),
+    // re-fetch the existing conversation row.
+    if (isUniqueViolation(createError)) {
+      const { data: racedConv } = await supabaseAdmin()
+        .from('conversations')
+        .select('*')
+        .eq('account_id', accountId)
+        .eq('contact_id', contactId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (racedConv) {
+        return { conversation: racedConv, created: false }
+      }
+    }
     console.error('Error creating conversation:', createError)
     return null
   }

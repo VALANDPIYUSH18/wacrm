@@ -159,7 +159,7 @@ describe('WhatsApp Embedded Signup Callback Route', () => {
         user_id: 'user-1',
         phone_number_id: 'pn_888',
         waba_id: 'waba_999',
-        access_token_encrypted: 'enc_meta_access_token_xyz',
+        access_token: 'enc_meta_access_token_xyz',
       }),
       { onConflict: 'account_id' }
     );

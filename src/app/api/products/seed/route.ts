@@ -12,11 +12,15 @@ export async function POST(_request: NextRequest) {
   try {
     const { supabase, accountId } = await requireRole('agent');
 
-    const records = DEMO_PRODUCTS.map((item) => ({
-      ...item,
-      account_id: accountId,
-      updated_at: new Date().toISOString(),
-    }));
+    const records = DEMO_PRODUCTS.map((item) => {
+      // Omit static demo ID so Postgres gen_random_uuid() handles ID assignment
+      const { id: _id, ...rest } = item;
+      return {
+        ...rest,
+        account_id: accountId,
+        updated_at: new Date().toISOString(),
+      };
+    });
 
     const { data, error } = await supabase
       .from('products')

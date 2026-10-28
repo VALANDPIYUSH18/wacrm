@@ -109,21 +109,12 @@ export async function POST(request: NextRequest) {
       const { data } = await admin
         .from('messages')
         .insert({
-          account_id: accountId,
           conversation_id: conversationId,
           sender_type: 'agent',
           sender_id: userId,
+          content_type: 'text',
           content_text: messageText,
-          message_type: 'text',
           status: 'delivered',
-          metadata: {
-            type: 'payment_request',
-            orderId: linkResult.orderId,
-            provider,
-            amount: numAmount,
-            currency: currency.toUpperCase(),
-            paymentUrl: linkResult.paymentUrl,
-          },
         })
         .select()
         .single();
@@ -133,7 +124,8 @@ export async function POST(request: NextRequest) {
         .from('conversations')
         .update({
           last_message_at: new Date().toISOString(),
-          last_message_preview: `Payment Request: ${currencySymbol}${numAmount}`,
+          last_message_text: `Payment Request: ${currencySymbol}${numAmount}`,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', conversationId);
     }

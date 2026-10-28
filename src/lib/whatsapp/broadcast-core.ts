@@ -20,6 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-api';
 import { decrypt } from '@/lib/whatsapp/encryption';
+import type { SendTimeParams } from '@/lib/whatsapp/template-send-builder';
 import {
   sanitizePhoneForMeta,
   isValidE164,
@@ -43,10 +44,13 @@ export class BroadcastError extends Error {
 }
 
 export interface BroadcastRecipientInput {
-  /** E.164 phone. */
-  to: string;
+  /** E.164 phone. Supports either 'to' or 'phone'. */
+  to?: string;
+  phone?: string;
   /** Positional body params for the template ({{1}}, {{2}}…). */
   params?: string[];
+  /** Structured per-send values (e.g. headerMediaUrl). */
+  messageParams?: SendTimeParams;
 }
 
 export interface CreateBroadcastParams {
@@ -60,6 +64,7 @@ interface PlannedRecipient {
   recipientRowId: string;
   phone: string;
   params: string[];
+  messageParams?: SendTimeParams;
 }
 
 export interface BroadcastPlan {
@@ -145,10 +150,11 @@ export async function createBroadcast(
 
   // Resolve each recipient to a contact. Invalid phones are dropped
   // (counted as rejected) rather than aborting the whole broadcast.
-  const resolved: { contactId: string; phone: string; params: string[] }[] = [];
+  const resolved: { contactId: string; phone: string; params: string[]; messageParams?: SendTimeParams }[] = [];
   let rejected = 0;
   for (const r of recipients) {
-    const sanitized = sanitizePhoneForMeta(typeof r.to === 'string' ? r.to : '');
+    const rawPhone = typeof r.to === 'string' && r.to.trim() ? r.to : typeof r.phone === 'string' ? r.phone : '';
+    const sanitized = sanitizePhoneForMeta(rawPhone);
     if (!isValidE164(sanitized)) {
       rejected++;
       continue;
@@ -162,6 +168,7 @@ export async function createBroadcast(
       params: Array.isArray(r.params)
         ? r.params.filter((p): p is string => typeof p === 'string')
         : [],
+      messageParams: r.messageParams,
     });
   }
 
@@ -231,7 +238,12 @@ export async function createBroadcast(
   const byContact = new Map(deduped.map((r) => [r.contactId, r]));
   const planned: PlannedRecipient[] = recipientRows.map((row) => {
     const r = byContact.get(row.contact_id as string)!;
-    return { recipientRowId: row.id as string, phone: r.phone, params: r.params };
+    return {
+      recipientRowId: row.id as string,
+      phone: r.phone,
+      params: r.params,
+      messageParams: r.messageParams,
+    };
   });
 
   return {
@@ -265,63 +277,76 @@ export async function deliverBroadcast(
 ): Promise<void> {
   let sentCount = 0;
 
-  for (const recipient of plan.planned) {
-    const variants = phoneVariants(recipient.phone);
-    let sentMessageId: string | null = null;
-    let lastError: string | null = null;
+  try {
+    for (const recipient of plan.planned) {
+      const variants = phoneVariants(recipient.phone);
+      let sentMessageId: string | null = null;
+      let lastError: string | null = null;
 
-    for (const variant of variants) {
-      try {
-        const result = await sendTemplateMessage({
-          phoneNumberId: plan.phoneNumberId,
-          accessToken: plan.accessToken,
-          to: variant,
-          templateName: plan.templateName,
-          language: plan.templateLanguage,
-          template: plan.templateRow ?? undefined,
-          params: recipient.params,
-        });
-        sentMessageId = result.messageId;
-        lastError = null;
-        break;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        lastError = message;
-        // Only a "recipient not allowed" error is worth another variant.
-        if (!isRecipientNotAllowedError(message)) break;
+      for (const variant of variants) {
+        try {
+          const result = await sendTemplateMessage({
+            phoneNumberId: plan.phoneNumberId,
+            accessToken: plan.accessToken,
+            to: variant,
+            templateName: plan.templateName,
+            language: plan.templateLanguage,
+            template: plan.templateRow ?? undefined,
+            params: recipient.params,
+            messageParams: recipient.messageParams,
+          });
+          sentMessageId = result.messageId;
+          lastError = null;
+          break;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          lastError = message;
+          // Only a "recipient not allowed" error is worth another variant.
+          if (!isRecipientNotAllowedError(message)) break;
+        }
+      }
+
+      if (sentMessageId) {
+        sentCount++;
+        await db
+          .from('broadcast_recipients')
+          .update({
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            whatsapp_message_id: sentMessageId,
+            error_message: null,
+          })
+          .eq('id', recipient.recipientRowId);
+      } else {
+        await db
+          .from('broadcast_recipients')
+          .update({
+            status: 'failed',
+            error_message: lastError || 'Unknown error',
+          })
+          .eq('id', recipient.recipientRowId);
       }
     }
 
-    if (sentMessageId) {
-      sentCount++;
-      await db
-        .from('broadcast_recipients')
-        .update({
-          status: 'sent',
-          sent_at: new Date().toISOString(),
-          whatsapp_message_id: sentMessageId,
-          error_message: null,
-        })
-        .eq('id', recipient.recipientRowId);
-    } else {
-      await db
-        .from('broadcast_recipients')
-        .update({
-          status: 'failed',
-          error_message: lastError || 'Unknown error',
-        })
-        .eq('id', recipient.recipientRowId);
-    }
+    // Terminal status only — counts are trigger-owned (see the note
+    // above). If nothing sent, the broadcast failed outright; a partial
+    // send is still 'sent' (per-recipient failures show in failed_count).
+    await db
+      .from('broadcasts')
+      .update({
+        status: sentCount > 0 ? 'sent' : 'failed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', plan.broadcastId);
+  } catch (err) {
+    console.error('[broadcast-core] deliverBroadcast fatal error:', err);
+    // Ensure campaign does not stay stuck in 'sending'
+    await db
+      .from('broadcasts')
+      .update({
+        status: sentCount > 0 ? 'sent' : 'failed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', plan.broadcastId);
   }
-
-  // Terminal status only — counts are trigger-owned (see the note
-  // above). If nothing sent, the broadcast failed outright; a partial
-  // send is still 'sent' (per-recipient failures show in failed_count).
-  await db
-    .from('broadcasts')
-    .update({
-      status: sentCount > 0 ? 'sent' : 'failed',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', plan.broadcastId);
 }

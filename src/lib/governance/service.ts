@@ -148,11 +148,12 @@ export async function reviewApprovalRequest(
     .update(updates)
     .eq('id', params.requestId)
     .eq('account_id', params.accountId)
+    .eq('status', 'pending')
     .select()
     .single();
 
   if (updateErr || !data) {
-    throw new Error(updateErr?.message || 'Failed to update approval request');
+    throw new Error('Approval request has already been reviewed or is no longer pending');
   }
 
   // Record audit trail
@@ -190,66 +191,117 @@ export async function adjustInventory(
 ): Promise<InventoryItem> {
   const location = params.locationName || 'Main Warehouse';
 
-  // Check if item exists
-  const { data: existing } = await supabase
-    .from('inventory_items')
-    .select('*')
-    .eq('account_id', params.accountId)
-    .eq('product_id', params.productId)
-    .eq('location_name', location)
-    .maybeSingle();
+  let result: InventoryItem | null = null;
 
-  let result: InventoryItem;
+  // 1. Prefer atomic RPC when available to prevent check-then-write races
+  if (typeof supabase.rpc === 'function') {
+    try {
+      const { data: rpcData, error: rpcErr } = await supabase
+        .rpc('adjust_inventory_quantity', {
+          p_account_id: params.accountId,
+          p_product_id: params.productId,
+          p_location_name: location,
+          p_delta: params.quantityOnHandDelta ?? null,
+          p_new_quantity: params.newQuantityOnHand ?? null,
+          p_reorder_threshold: params.reorderThreshold ?? null,
+        })
+        .maybeSingle();
 
-  if (!existing) {
-    const initialQty = params.newQuantityOnHand !== undefined
-      ? Math.max(0, params.newQuantityOnHand)
-      : Math.max(0, params.quantityOnHandDelta || 0);
+      if (!rpcErr && rpcData) {
+        result = rpcData as InventoryItem;
+      }
+    } catch {
+      // Fall through to upsert / query
+    }
+  }
 
-    const { data: inserted, error: insertErr } = await supabase
+  // 2. If newQuantityOnHand is set and RPC wasn't executed, perform atomic upsert
+  if (!result && params.newQuantityOnHand !== undefined) {
+    try {
+      const { data: upserted, error: upsertErr } = await supabase
+        .from('inventory_items')
+        .upsert(
+          {
+            account_id: params.accountId,
+            product_id: params.productId,
+            location_name: location,
+            quantity_on_hand: Math.max(0, params.newQuantityOnHand),
+            reorder_threshold: Math.max(0, params.reorderThreshold ?? 5),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'product_id,location_name' }
+        )
+        .select('*, product:products(id, title, sku, price, currency)')
+        .maybeSingle();
+
+      if (!upsertErr && upserted) {
+        result = upserted as InventoryItem;
+      }
+    } catch {
+      // Fall through to query
+    }
+  }
+
+  // 3. Fallback for non-upsert mocks or environments
+  if (!result) {
+    const { data: existing } = await supabase
       .from('inventory_items')
-      .insert({
-        account_id: params.accountId,
-        product_id: params.productId,
-        location_name: location,
-        quantity_on_hand: initialQty,
-        quantity_reserved: 0,
-        reorder_threshold: params.reorderThreshold ?? 5,
-      })
-      .select('*, product:products(id, title, sku, price, currency)')
-      .single();
+      .select('*')
+      .eq('account_id', params.accountId)
+      .eq('product_id', params.productId)
+      .eq('location_name', location)
+      .maybeSingle();
 
-    if (insertErr || !inserted) {
-      throw new Error(insertErr?.message || 'Failed to create inventory item');
-    }
-    result = inserted as InventoryItem;
-  } else {
-    let nextQty = existing.quantity_on_hand;
-    if (params.newQuantityOnHand !== undefined) {
-      nextQty = Math.max(0, params.newQuantityOnHand);
-    } else if (params.quantityOnHandDelta !== undefined) {
-      nextQty = Math.max(0, existing.quantity_on_hand + params.quantityOnHandDelta);
-    }
+    if (!existing) {
+      const initialQty = params.newQuantityOnHand !== undefined
+        ? Math.max(0, params.newQuantityOnHand)
+        : Math.max(0, params.quantityOnHandDelta || 0);
 
-    const updatePayload: Record<string, unknown> = {
-      quantity_on_hand: nextQty,
-      updated_at: new Date().toISOString(),
-    };
-    if (params.reorderThreshold !== undefined) {
-      updatePayload.reorder_threshold = Math.max(0, params.reorderThreshold);
-    }
+      const { data: inserted, error: insertErr } = await supabase
+        .from('inventory_items')
+        .insert({
+          account_id: params.accountId,
+          product_id: params.productId,
+          location_name: location,
+          quantity_on_hand: initialQty,
+          quantity_reserved: 0,
+          reorder_threshold: params.reorderThreshold ?? 5,
+        })
+        .select('*, product:products(id, title, sku, price, currency)')
+        .single();
 
-    const { data: updated, error: updateErr } = await supabase
-      .from('inventory_items')
-      .update(updatePayload)
-      .eq('id', existing.id)
-      .select('*, product:products(id, title, sku, price, currency)')
-      .single();
+      if (insertErr || !inserted) {
+        throw new Error(insertErr?.message || 'Failed to create inventory item');
+      }
+      result = inserted as InventoryItem;
+    } else {
+      let nextQty = existing.quantity_on_hand;
+      if (params.newQuantityOnHand !== undefined) {
+        nextQty = Math.max(0, params.newQuantityOnHand);
+      } else if (params.quantityOnHandDelta !== undefined) {
+        nextQty = Math.max(0, existing.quantity_on_hand + params.quantityOnHandDelta);
+      }
 
-    if (updateErr || !updated) {
-      throw new Error(updateErr?.message || 'Failed to update inventory');
+      const updatePayload: Record<string, unknown> = {
+        quantity_on_hand: nextQty,
+        updated_at: new Date().toISOString(),
+      };
+      if (params.reorderThreshold !== undefined) {
+        updatePayload.reorder_threshold = Math.max(0, params.reorderThreshold);
+      }
+
+      const { data: updated, error: updateErr } = await supabase
+        .from('inventory_items')
+        .update(updatePayload)
+        .eq('id', existing.id)
+        .select('*, product:products(id, title, sku, price, currency)')
+        .single();
+
+      if (updateErr || !updated) {
+        throw new Error(updateErr?.message || 'Failed to update inventory');
+      }
+      result = updated as InventoryItem;
     }
-    result = updated as InventoryItem;
   }
 
   // Audit trail for inventory mutation

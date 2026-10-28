@@ -117,18 +117,21 @@ export async function POST(request: NextRequest) {
 
           if (!sent) {
             await admin.from('messages').insert({
-              account_id: order.account_id,
               conversation_id: order.conversation_id,
               sender_type: 'bot',
               content_text: receiptMessage,
-              message_type: 'text',
+              content_type: 'text',
               status: 'delivered',
-              metadata: {
-                type: 'payment_receipt',
-                orderId: order.id,
-                provider: 'stripe',
-              },
             });
+
+            await admin
+              .from('conversations')
+              .update({
+                last_message_at: new Date().toISOString(),
+                last_message_text: `Payment Received: ${currencySymbol}${Number(order.amount).toLocaleString()}`,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', order.conversation_id);
           }
         }
       }

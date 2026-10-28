@@ -86,6 +86,21 @@ describe("middleware — refreshed auth cookies survive redirects", () => {
     expect(res.cookies.get(ROTATED.name)?.value).toBe("cleared");
   });
 
+  it("protects /approvals and /inventory from unauthenticated access", async () => {
+    mockUser = null;
+    const approvalsRes = await middleware(
+      new NextRequest("https://app.test/approvals"),
+    );
+    expect(approvalsRes.status).toBe(307);
+    expect(approvalsRes.headers.get("location")).toContain("/login");
+
+    const inventoryRes = await middleware(
+      new NextRequest("https://app.test/inventory"),
+    );
+    expect(inventoryRes.status).toBe(307);
+    expect(inventoryRes.headers.get("location")).toContain("/login");
+  });
+
   it("redirects a signed-in user with an invite token to /join/<token>", async () => {
     mockUser = { id: "user-1" };
     refreshedCookies = [ROTATED];

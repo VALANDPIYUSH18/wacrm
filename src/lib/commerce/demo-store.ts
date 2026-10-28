@@ -15,7 +15,7 @@ export interface DemoProduct {
 
 export const INITIAL_DEMO_PRODUCTS = [
   {
-    id: 'demo-prod-001',
+    id: 'a0000001-0000-4000-8000-000000000001',
     title: 'WACRM Starter Plan',
     sku: 'WACRM-001',
     category: 'Software Subscription',
@@ -26,7 +26,7 @@ export const INITIAL_DEMO_PRODUCTS = [
     is_active: true,
   },
   {
-    id: 'demo-prod-002',
+    id: 'a0000002-0000-4000-8000-000000000002',
     title: 'WACRM Business Plan',
     sku: 'WACRM-002',
     category: 'Software Subscription',
@@ -37,7 +37,7 @@ export const INITIAL_DEMO_PRODUCTS = [
     is_active: true,
   },
   {
-    id: 'demo-prod-003',
+    id: 'a0000003-0000-4000-8000-000000000003',
     title: 'WACRM Enterprise Plan',
     sku: 'WACRM-003',
     category: 'Software Subscription',
@@ -48,7 +48,7 @@ export const INITIAL_DEMO_PRODUCTS = [
     is_active: true,
   },
   {
-    id: 'demo-prod-004',
+    id: 'a0000004-0000-4000-8000-000000000004',
     title: 'CRM Setup & Onboarding Workshop',
     sku: 'SRV-001',
     category: 'Professional Services',
@@ -59,7 +59,7 @@ export const INITIAL_DEMO_PRODUCTS = [
     is_active: true,
   },
   {
-    id: 'demo-prod-005',
+    id: 'a0000005-0000-4000-8000-000000000005',
     title: 'WhatsApp Automation Setup & Templates',
     sku: 'SRV-002',
     category: 'Professional Services',
@@ -70,7 +70,7 @@ export const INITIAL_DEMO_PRODUCTS = [
     is_active: true,
   },
   {
-    id: 'demo-prod-006',
+    id: 'a0000006-0000-4000-8000-000000000006',
     title: 'Wireless QR & Barcode Scanner',
     sku: 'HW-001',
     category: 'Electronics',
@@ -81,7 +81,7 @@ export const INITIAL_DEMO_PRODUCTS = [
     is_active: true,
   },
   {
-    id: 'demo-prod-007',
+    id: 'a0000007-0000-4000-8000-000000000007',
     title: 'Executive Business Notebooks (Pack of 5)',
     sku: 'OFF-001',
     category: 'Office Supplies',
@@ -92,7 +92,7 @@ export const INITIAL_DEMO_PRODUCTS = [
     is_active: true,
   },
   {
-    id: 'demo-prod-008',
+    id: 'a0000008-0000-4000-8000-000000000008',
     title: 'Omnichannel ERP Integration Pack',
     sku: 'SRV-003',
     category: 'Professional Services',
@@ -127,7 +127,7 @@ export function addDemoProduct(accountId: string, product: Omit<DemoProduct, 'id
   const now = new Date().toISOString();
   const created: DemoProduct = {
     ...product,
-    id: `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, '0')}`,
     account_id: accountId,
     created_at: now,
     updated_at: now,

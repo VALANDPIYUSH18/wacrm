@@ -3,7 +3,6 @@ import {
   createApprovalRequest,
   reviewApprovalRequest,
   adjustInventory,
-  logAuditEvent,
 } from './service';
 
 describe('Governance & 4-Eyes Principle Service', () => {
@@ -98,8 +97,10 @@ describe('Governance & 4-Eyes Principle Service', () => {
     const mockUpdate = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: mockUpdated, error: null }),
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: mockUpdated, error: null }),
+            }),
           }),
         }),
       }),
@@ -185,5 +186,86 @@ describe('Governance & 4-Eyes Principle Service', () => {
 
     expect(res.id).toBe('inv-101');
     expect(res.quantity_on_hand).toBe(50);
+  });
+
+  it('reviewApprovalRequest rejects if concurrent review updated status from pending', async () => {
+    const mockExisting = {
+      id: 'req-001',
+      account_id: mockAccountId,
+      requested_by: initiatorId,
+      status: 'pending',
+    };
+
+    // Update query fails because status is no longer pending in DB
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Row not found' } }),
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: mockExisting, error: null }),
+        update: mockUpdate,
+      }),
+    };
+
+    await expect(
+      reviewApprovalRequest(mockSupabase as never, {
+        accountId: mockAccountId,
+        requestId: 'req-001',
+        reviewerId: managerId,
+        status: 'approved',
+      })
+    ).rejects.toThrow(/already been reviewed or is no longer pending/i);
+  });
+
+  it('adjustInventory executes atomic adjust_inventory_quantity RPC when available', async () => {
+    const mockRpcItem = {
+      id: 'inv-rpc-1',
+      account_id: mockAccountId,
+      product_id: 'prod-123',
+      location_name: 'Main Warehouse',
+      quantity_on_hand: 42,
+    };
+
+    const mockRpc = vi.fn().mockReturnValue({
+      maybeSingle: vi.fn().mockResolvedValue({ data: mockRpcItem, error: null }),
+    });
+
+    const mockSupabase = {
+      rpc: mockRpc,
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: { id: 'aud-3' }, error: null }),
+          }),
+        }),
+      }),
+    };
+
+    const res = await adjustInventory(mockSupabase as never, {
+      accountId: mockAccountId,
+      productId: 'prod-123',
+      quantityOnHandDelta: 5,
+    });
+
+    expect(mockRpc).toHaveBeenCalledWith('adjust_inventory_quantity', {
+      p_account_id: mockAccountId,
+      p_product_id: 'prod-123',
+      p_location_name: 'Main Warehouse',
+      p_delta: 5,
+      p_new_quantity: null,
+      p_reorder_threshold: null,
+    });
+    expect(res.quantity_on_hand).toBe(42);
   });
 });
