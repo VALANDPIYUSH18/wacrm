@@ -1,80 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
+import { INITIAL_DEMO_PRODUCTS, resetDemoProducts } from '@/lib/commerce/demo-store';
 
-export const DEMO_PRODUCTS = [
-  {
-    title: 'WACRM Starter Plan',
-    sku: 'WACRM-001',
-    category: 'Software Subscription',
-    price: 999,
-    currency: 'INR',
-    description: 'WhatsApp shared inbox, contact management, and basic automation.',
-    is_active: true,
-  },
-  {
-    title: 'WACRM Business Plan',
-    sku: 'WACRM-002',
-    category: 'Software Subscription',
-    price: 2499,
-    currency: 'INR',
-    description: 'Team inbox, sales pipeline, automation, and reporting.',
-    is_active: true,
-  },
-  {
-    title: 'WACRM Enterprise Plan',
-    sku: 'WACRM-003',
-    category: 'Software Subscription',
-    price: 9999,
-    currency: 'INR',
-    description: 'Advanced team management, integrations, and business workflows.',
-    is_active: true,
-  },
-  {
-    title: 'CRM Setup & Configuration',
-    sku: 'SRV-001',
-    category: 'Professional Services',
-    price: 4999,
-    currency: 'INR',
-    description: 'Initial CRM configuration, user setup, and workflow customization.',
-    is_active: true,
-  },
-  {
-    title: 'WhatsApp Automation Setup',
-    sku: 'SRV-002',
-    category: 'Professional Services',
-    price: 2999,
-    currency: 'INR',
-    description: 'Automated replies, lead capture, and follow-up workflow setup.',
-    is_active: true,
-  },
-  {
-    title: 'ERP Integration Service',
-    sku: 'SRV-003',
-    category: 'Professional Services',
-    price: 14999,
-    currency: 'INR',
-    description: 'Demo integration service for CRM and ERP contact synchronization.',
-    is_active: true,
-  },
-  {
-    title: 'Wireless Barcode Scanner',
-    sku: 'HW-001',
-    category: 'Electronics',
-    price: 2499,
-    currency: 'INR',
-    description: 'Demo product for inventory and retail businesses.',
-    is_active: true,
-  },
-  {
-    title: 'Business Notebook Pack',
-    sku: 'OFF-001',
-    category: 'Office Supplies',
-    price: 299,
-    currency: 'INR',
-    description: 'Pack of five notebooks for business and office use.',
-    is_active: true,
-  },
-];
+export const DEMO_PRODUCTS = INITIAL_DEMO_PRODUCTS;
 
 /**
  * POST /api/products/seed
@@ -96,6 +24,11 @@ export async function POST(_request: NextRequest) {
       .select();
 
     if (error) {
+      if (error.message.includes('Could not find the table') || error.code === '42P01') {
+        const seeded = resetDemoProducts(accountId);
+        return NextResponse.json({ count: seeded.length, products: seeded, isDemoFallback: true });
+      }
+
       // If no unique constraint on (account_id, sku) yet, insert missing ones
       const { data: inserted, error: insertError } = await supabase
         .from('products')
@@ -103,6 +36,10 @@ export async function POST(_request: NextRequest) {
         .select();
 
       if (insertError) {
+        if (insertError.message.includes('Could not find the table') || insertError.code === '42P01') {
+          const seeded = resetDemoProducts(accountId);
+          return NextResponse.json({ count: seeded.length, products: seeded, isDemoFallback: true });
+        }
         return NextResponse.json({ error: insertError.message }, { status: 500 });
       }
       return NextResponse.json({ count: inserted?.length || 0, products: inserted });

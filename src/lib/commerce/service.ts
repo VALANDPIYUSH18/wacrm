@@ -1,9 +1,9 @@
 import { getGatewayConfig } from './gateway';
 import type { CreatePaymentLinkParams } from './types';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 
-let _adminClient: any = null;
-function getAdmin() {
+let _adminClient: SupabaseClient | null = null;
+function getAdmin(): SupabaseClient {
   if (!_adminClient) {
     _adminClient = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,7 +33,7 @@ async function createRazorpayLink(
 
   const authHeader = `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`;
 
-  const body: Record<string, any> = {
+  const body: Record<string, unknown> = {
     amount: amountInPaise,
     currency: params.currency.toUpperCase(),
     accept_partial: false,

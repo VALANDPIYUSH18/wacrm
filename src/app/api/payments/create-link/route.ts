@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
-    const customerPhone = (conv.contacts as any)?.phone;
+    const contactObj = conv.contacts as { phone?: string; name?: string } | null;
+    const customerPhone = contactObj?.phone;
 
     // Generate link via service
     const linkResult = await generatePaymentLink(
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
     const messageText = `📦 *Payment Request: ${title.trim()}*\nAmount: *${currencySymbol}${numAmount.toLocaleString()}*${descSection}\n👉 Click here to complete your secure payment:\n${linkResult.paymentUrl}`;
 
     // Send WhatsApp message if WhatsApp integration is connected
-    let sendResult: any = null;
+    let sendResult: { messageId?: string; whatsappMessageId?: string } | null = null;
     try {
       sendResult = await sendMessageToConversation(admin, accountId, {
         conversationId,
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // If sendMessageToConversation already persisted the message, fetch it or record fallback
-    let insertedMsg: any = null;
+    let insertedMsg: Record<string, unknown> | null = null;
     if (sendResult?.messageId) {
       const { data } = await admin
         .from('messages')

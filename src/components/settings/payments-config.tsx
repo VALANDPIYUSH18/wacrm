@@ -89,7 +89,7 @@ export function PaymentsConfig() {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload: Record<string, any> = {
+      const payload: Record<string, string | boolean> = {
         provider: 'razorpay',
         isActive: rzpActive,
         publishableKey: rzpKeyId,
@@ -120,7 +120,7 @@ export function PaymentsConfig() {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload: Record<string, any> = {
+      const payload: Record<string, string | boolean> = {
         provider: 'stripe',
         isActive: stripeActive,
         publishableKey: stripePublishableKey,

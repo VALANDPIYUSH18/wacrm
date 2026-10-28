@@ -20,21 +20,30 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
     const signatureHeader = request.headers.get('stripe-signature');
 
-    let event: any;
+    let event: Record<string, unknown> = {};
     try {
-      event = JSON.parse(rawBody);
+      event = JSON.parse(rawBody) as Record<string, unknown>;
     } catch {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
 
-    const session = event?.data?.object;
-    const metadata = session?.metadata || {};
+    const dataObj = event.data as Record<string, Record<string, unknown>> | undefined;
+    const session = dataObj?.object;
+    const metadata = (session?.metadata || {}) as Record<string, string>;
     const orderId = metadata.orderId;
     const accountId = metadata.accountId;
 
     const admin = getAdmin();
 
-    let order: any = null;
+    let order: {
+      id: string;
+      account_id: string;
+      status: string;
+      amount: number;
+      currency: string;
+      conversation_id: string | null;
+      products?: { title: string } | null;
+    } | null = null;
     if (orderId) {
       const { data } = await admin
         .from('payment_orders')
@@ -46,7 +55,7 @@ export async function POST(request: NextRequest) {
       const { data } = await admin
         .from('payment_orders')
         .select('*, products(title)')
-        .eq('provider_payment_link_id', session.id)
+        .eq('provider_payment_link_id', session.id as string)
         .maybeSingle();
       order = data;
     }
@@ -88,17 +97,11 @@ export async function POST(request: NextRequest) {
           .eq('id', order.id);
 
         if (order.conversation_id) {
-          const { data: conv } = await admin
-            .from('conversations')
-            .select('id, contact_id, contacts(phone, name)')
-            .eq('id', order.conversation_id)
-            .single();
-
-          const contactPhone = (conv?.contacts as any)?.phone;
           const currencySymbol = order.currency === 'INR' ? '₹' : `${order.currency} `;
           const itemTitle = order.products?.title || 'your order';
+          const refId = (session?.id as string) || order.id.slice(0, 8);
 
-          const receiptMessage = `✅ *Payment Received!*\n\nWe have received your payment of *${currencySymbol}${Number(order.amount).toLocaleString()}* for *${itemTitle}*.\n\nStripe Reference: \`${session.id || order.id.slice(0, 8)}\`\nStatus: *Completed*\n\nThank you for your purchase!`;
+          const receiptMessage = `✅ *Payment Received!*\n\nWe have received your payment of *${currencySymbol}${Number(order.amount).toLocaleString()}* for *${itemTitle}*.\n\nStripe Reference: \`${refId}\`\nStatus: *Completed*\n\nThank you for your purchase!`;
 
           let sent = false;
           try {

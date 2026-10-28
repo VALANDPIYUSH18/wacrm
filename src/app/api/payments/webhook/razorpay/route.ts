@@ -20,24 +20,33 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
     const signature = request.headers.get('x-razorpay-signature');
 
-    let event: any;
+    let event: Record<string, unknown> = {};
     try {
-      event = JSON.parse(rawBody);
+      event = JSON.parse(rawBody) as Record<string, unknown>;
     } catch {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
     // Identify account / order
-    const paymentLinkEntity = event?.payload?.payment_link?.entity;
-    const paymentEntity = event?.payload?.payment?.entity;
-    const notes = paymentLinkEntity?.notes || paymentEntity?.notes || {};
+    const payloadObj = event.payload as Record<string, Record<string, unknown>> | undefined;
+    const paymentLinkEntity = payloadObj?.payment_link?.entity as Record<string, unknown> | undefined;
+    const paymentEntity = payloadObj?.payment?.entity as Record<string, unknown> | undefined;
+    const notes = (paymentLinkEntity?.notes || paymentEntity?.notes || {}) as Record<string, string>;
     const orderId = notes.orderId;
     const accountId = notes.accountId;
 
     const admin = getAdmin();
 
     // Look up order if orderId is available
-    let order: any = null;
+    let order: {
+      id: string;
+      account_id: string;
+      status: string;
+      amount: number;
+      currency: string;
+      conversation_id: string | null;
+      products?: { title: string } | null;
+    } | null = null;
     if (orderId) {
       const { data } = await admin
         .from('payment_orders')
@@ -85,19 +94,13 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', order.id);
 
-        // Fetch contact phone & conversation
+        // Send confirmation to conversation
         if (order.conversation_id) {
-          const { data: conv } = await admin
-            .from('conversations')
-            .select('id, contact_id, contacts(phone, name)')
-            .eq('id', order.conversation_id)
-            .single();
-
-          const contactPhone = (conv?.contacts as any)?.phone;
           const currencySymbol = order.currency === 'INR' ? '₹' : `${order.currency} `;
           const itemTitle = order.products?.title || 'your order';
+          const txnId = (paymentEntity?.id as string) || (paymentLinkEntity?.id as string) || order.id.slice(0, 8);
 
-          const receiptMessage = `✅ *Payment Received!*\n\nWe have received your payment of *${currencySymbol}${Number(order.amount).toLocaleString()}* for *${itemTitle}*.\n\nTransaction ID: \`${paymentEntity?.id || paymentLinkEntity?.id || order.id.slice(0, 8)}\`\nStatus: *Completed*\n\nThank you for your purchase!`;
+          const receiptMessage = `✅ *Payment Received!*\n\nWe have received your payment of *${currencySymbol}${Number(order.amount).toLocaleString()}* for *${itemTitle}*.\n\nTransaction ID: \`${txnId}\`\nStatus: *Completed*\n\nThank you for your purchase!`;
 
           // Send confirmation over WhatsApp using core helper
           let sent = false;

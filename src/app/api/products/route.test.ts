@@ -34,10 +34,10 @@ describe('Products API (/api/products)', () => {
       }),
     };
 
-    (getCurrentAccount as any).mockResolvedValue({
-      supabase: mockSupabase,
+    vi.mocked(getCurrentAccount).mockResolvedValue({
+      supabase: mockSupabase as never,
       accountId: mockAccountId,
-    });
+    } as never);
 
     const req = new NextRequest('http://localhost:3000/api/products');
     const res = await GET(req);
@@ -64,10 +64,10 @@ describe('Products API (/api/products)', () => {
       }),
     };
 
-    (requireRole as any).mockResolvedValue({
-      supabase: mockSupabase,
+    vi.mocked(requireRole).mockResolvedValue({
+      supabase: mockSupabase as never,
       accountId: mockAccountId,
-    });
+    } as never);
 
     const req = new NextRequest('http://localhost:3000/api/products', {
       method: 'POST',
@@ -86,10 +86,10 @@ describe('Products API (/api/products)', () => {
   });
 
   it('POST rejects invalid negative price', async () => {
-    (requireRole as any).mockResolvedValue({
-      supabase: {},
+    vi.mocked(requireRole).mockResolvedValue({
+      supabase: {} as never,
       accountId: mockAccountId,
-    });
+    } as never);
 
     const req = new NextRequest('http://localhost:3000/api/products', {
       method: 'POST',

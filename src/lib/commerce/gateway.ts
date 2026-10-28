@@ -1,9 +1,9 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { decrypt, encrypt } from '@/lib/whatsapp/encryption';
-import type { PaymentGatewayConfig, PaymentGatewayProvider } from './types';
+import type { PaymentGatewayProvider } from './types';
 
-let _adminClient: any = null;
-function getAdmin() {
+let _adminClient: SupabaseClient | null = null;
+function getAdmin(): SupabaseClient {
   if (!_adminClient) {
     _adminClient = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,7 +68,7 @@ export async function saveGatewayConfig(
   }
 ): Promise<void> {
   const admin = getAdmin();
-  const updates: Record<string, any> = {
+  const updates: Record<string, string | number | boolean | null> = {
     account_id: accountId,
     provider,
     updated_at: new Date().toISOString(),

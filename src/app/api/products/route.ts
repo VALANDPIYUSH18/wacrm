@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAccount, requireRole, toErrorResponse } from '@/lib/auth/account';
+import { getDemoProducts, addDemoProduct } from '@/lib/commerce/demo-store';
 
 /**
  * GET /api/products
@@ -23,7 +24,20 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
+      // If table is missing from Postgres schema cache, gracefully fall back to demo catalog
+      if (error.message.includes('Could not find the table') || error.code === '42P01') {
+        const demoList = getDemoProducts(accountId);
+        const filtered = activeOnly ? demoList.filter((p) => p.is_active) : demoList;
+        return NextResponse.json({ products: filtered, isDemoFallback: true });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // If database table is empty, auto-seed demo products
+    if (!data || data.length === 0) {
+      const demoList = getDemoProducts(accountId);
+      const filtered = activeOnly ? demoList.filter((p) => p.is_active) : demoList;
+      return NextResponse.json({ products: filtered, isDemoFallback: true });
     }
 
     return NextResponse.json({ products: data || [] });
@@ -52,23 +66,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Valid price >= 0 is required' }, { status: 400 });
     }
 
+    const productPayload = {
+      title: title.trim(),
+      description: description ? String(description).trim() : null,
+      price: parsedPrice,
+      currency: String(currency).trim().toUpperCase(),
+      sku: sku ? String(sku).trim() : null,
+      category: category ? String(category).trim() : null,
+      image_url: image_url ? String(image_url).trim() : null,
+      is_active: Boolean(is_active),
+    };
+
     const { data, error } = await supabase
       .from('products')
       .insert({
         account_id: accountId,
-        title: title.trim(),
-        description: description ? String(description).trim() : null,
-        price: parsedPrice,
-        currency: String(currency).trim().toUpperCase(),
-        sku: sku ? String(sku).trim() : null,
-        category: category ? String(category).trim() : null,
-        image_url: image_url ? String(image_url).trim() : null,
-        is_active: Boolean(is_active),
+        ...productPayload,
       })
       .select()
       .single();
 
     if (error) {
+      // If table is missing from Postgres schema cache, store in demo fallback store
+      if (error.message.includes('Could not find the table') || error.code === '42P01') {
+        const created = addDemoProduct(accountId, productPayload);
+        return NextResponse.json({ product: created, isDemoFallback: true }, { status: 201 });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 

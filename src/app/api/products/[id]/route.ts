@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
+import { updateDemoProduct, deleteDemoProduct } from '@/lib/commerce/demo-store';
 
 /**
  * PATCH /api/products/[id]
@@ -14,7 +15,7 @@ export async function PATCH(
     const { supabase, accountId } = await requireRole('agent');
     const body = await request.json();
 
-    const updates: Record<string, any> = {
+    const updates: Record<string, string | number | boolean | null> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -29,6 +30,7 @@ export async function PATCH(
     }
     if (body.currency !== undefined) updates.currency = String(body.currency).trim().toUpperCase();
     if (body.sku !== undefined) updates.sku = body.sku ? String(body.sku).trim() : null;
+    if (body.category !== undefined) updates.category = body.category ? String(body.category).trim() : null;
     if (body.image_url !== undefined) updates.image_url = body.image_url ? String(body.image_url).trim() : null;
     if (body.is_active !== undefined) updates.is_active = Boolean(body.is_active);
 
@@ -41,6 +43,13 @@ export async function PATCH(
       .single();
 
     if (error) {
+      if (error.message.includes('Could not find the table') || error.code === '42P01') {
+        const updated = updateDemoProduct(accountId, id, updates);
+        if (!updated) {
+          return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+        }
+        return NextResponse.json({ product: updated, isDemoFallback: true });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -69,6 +78,10 @@ export async function DELETE(
       .eq('account_id', accountId);
 
     if (error) {
+      if (error.message.includes('Could not find the table') || error.code === '42P01') {
+        deleteDemoProduct(accountId, id);
+        return NextResponse.json({ success: true, isDemoFallback: true });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
