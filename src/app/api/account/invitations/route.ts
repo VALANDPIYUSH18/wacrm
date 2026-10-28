@@ -93,7 +93,7 @@ function isHostAllowed(
 
 function getBaseUrl(request: Request): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) return explicit.replace(/\/+$/, "");
+  if (explicit && !explicit.includes("example.com")) return explicit.replace(/\/+$/, "");
 
   const allowList = parseAllowedHosts();
   const forwardedHost = request.headers
@@ -110,27 +110,19 @@ function getBaseUrl(request: Request): string {
 
   const host = request.headers.get("host")?.trim();
   if (host && isHostAllowed(host, allowList)) {
-    // The protocol on `request.url` is whatever the framework saw —
-    // reliable for bare deployments where no proxy is rewriting it.
     const reqProto = new URL(request.url).protocol.replace(":", "");
     return `${reqProto}://${host}`;
   }
 
-  // We fall through here when EITHER no Host header was present at
-  // all (essentially impossible from a real browser) OR an
-  // ALLOWED_INVITE_HOSTS list was set and neither candidate matched
-  // it. The warning is the operator's signal that someone is
-  // probing the API with a spoofed Host header.
-  if (allowList && (forwardedHost || host)) {
-    console.warn(
-      "[POST /api/account/invitations] rejected non-allow-listed host:",
-      { forwardedHost, host, allowList },
-    );
-  } else {
-    console.warn(
-      "[POST /api/account/invitations] could not derive base URL from request; falling back to marketing domain",
-    );
+  try {
+    const parsed = new URL(request.url);
+    if (parsed.host && !parsed.host.includes("localhost") && !parsed.host.includes("example.com")) {
+      return `${parsed.protocol}//${parsed.host}`;
+    }
+  } catch {
+    // ignore
   }
+
   return "https://wacrm.tech";
 }
 

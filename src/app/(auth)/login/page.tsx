@@ -14,7 +14,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MessageSquare, UsersRound } from "lucide-react";
+import { MessageSquare, UsersRound, Loader2 } from "lucide-react";
+
+function LoginFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-md border-border bg-card">
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="mt-4 text-sm text-muted-foreground">Loading sign in...</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 // `useSearchParams` opts the component out of static prerendering
 // unless it sits under a Suspense boundary. We split the form into
@@ -23,7 +36,7 @@ import { MessageSquare, UsersRound } from "lucide-react";
 // string on the client.
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<LoginFallback />}>
       <LoginPageInner />
     </Suspense>
   );
@@ -60,9 +73,9 @@ function LoginPageInner() {
     }
 
     if (inviteToken) {
-      router.push(`/join/${encodeURIComponent(inviteToken)}`);
+      window.location.href = `/join/${encodeURIComponent(inviteToken)}`;
     } else {
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     }
   };
 

@@ -128,11 +128,28 @@ export function InviteMemberDialog({
 
       const data = (await res.json()) as {
         url: string;
+        token?: string;
         expiresInDays: number;
       };
 
+      // Ensure the generated link uses the active current browser origin if the server
+      // fell back to a default placeholder or if running on a custom domain.
+      let shareUrl = data.url;
+      if (typeof window !== 'undefined') {
+        try {
+          const parsed = new URL(data.url);
+          if (parsed.hostname.includes('example.com') || parsed.hostname === 'wacrm.tech' || data.token) {
+            shareUrl = `${window.location.origin}${parsed.pathname}`;
+          }
+        } catch {
+          if (data.token) {
+            shareUrl = `${window.location.origin}/join/${encodeURIComponent(data.token)}`;
+          }
+        }
+      }
+
       setResult({
-        url: data.url,
+        url: shareUrl,
         role,
         expiresInDays: data.expiresInDays,
         // Snapshot the account name into the result so the wa.me

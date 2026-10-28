@@ -217,6 +217,23 @@ export default function JoinPage() {
     }
   }, []);
 
+  // ----- Missing token -----
+  if (!token) {
+    return (
+      <Card className="w-full max-w-md border-border bg-card">
+        <CardHeader className="items-center text-center">
+          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10">
+            <MailX className="h-6 w-6 text-red-400" />
+          </div>
+          <CardTitle className="text-xl text-foreground">Invalid Link</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            No invitation token was found in the URL.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
   // ----- Loading state (peek pending OR auth not yet resolved) -----
   if (peek === null || authedUserId === undefined) {
     return (

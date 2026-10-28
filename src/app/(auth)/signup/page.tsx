@@ -14,13 +14,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MessageSquare, CheckCircle, UsersRound } from "lucide-react";
+import { MessageSquare, CheckCircle, UsersRound, Loader2 } from "lucide-react";
+
+function SignupFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-md border-border bg-card">
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="mt-4 text-sm text-muted-foreground">Loading sign up...</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 // `useSearchParams` opts the component out of static prerendering
 // unless wrapped in Suspense — same pattern as /login.
 export default function SignupPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<SignupFallback />}>
       <SignupPageInner />
     </Suspense>
   );
@@ -68,7 +81,7 @@ function SignupPageInner() {
       ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}`
       : undefined;
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -82,6 +95,16 @@ function SignupPageInner() {
     if (error) {
       setError(error.message);
       setLoading(false);
+      return;
+    }
+
+    // If Supabase signed the user in immediately (email confirmation disabled or auto-confirm)
+    if (data.session) {
+      if (inviteToken) {
+        window.location.href = `/join/${encodeURIComponent(inviteToken)}`;
+      } else {
+        window.location.href = "/dashboard";
+      }
       return;
     }
 
