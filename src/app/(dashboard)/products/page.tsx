@@ -65,9 +65,21 @@ export default function ProductsPage() {
   const [currency, setCurrency] = useState('INR');
   const [sku, setSku] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageFileName, setImageFileName] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const getDisplayImageName = (url: string, storedName?: string) => {
+    if (storedName) return storedName;
+    if (!url) return '';
+    try {
+      const raw = new URL(url).pathname.split('/').pop() || url;
+      return decodeURIComponent(raw.replace(/^\d+[-_]/, ''));
+    } catch {
+      return url.split('/').pop() || url;
+    }
+  };
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,6 +99,7 @@ export default function ProductsPage() {
     try {
       const res = await uploadAccountMedia('chat-media', file);
       setImageUrl(res.publicUrl);
+      setImageFileName(file.name);
       toast.success('Picture uploaded');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to upload picture');
@@ -121,6 +134,7 @@ export default function ProductsPage() {
     setCurrency(defaultCurrency || 'INR');
     setSku('');
     setImageUrl('');
+    setImageFileName('');
     setIsActive(true);
     setModalOpen(true);
   };
@@ -133,6 +147,7 @@ export default function ProductsPage() {
     setCurrency(p.currency);
     setSku(p.sku || '');
     setImageUrl(p.image_url || '');
+    setImageFileName('');
     setIsActive(p.is_active);
     setModalOpen(true);
   };
@@ -434,75 +449,90 @@ export default function ProductsPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="prod-img">Product Picture (Optional)</Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={handleImageFileChange}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  disabled={uploadingImage}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {uploadingImage ? (
-                    <>
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-1.5 h-3.5 w-3.5" />
-                      Upload Picture
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {imageUrl ? (
-                <div className="relative flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-2">
-                  <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-md border border-border bg-background">
-                    <img
-                      src={imageUrl}
-                      alt="Product preview"
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
+            <div className="space-y-1.5">
+              <Label htmlFor="prod-img">Product Picture (Optional)</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleImageFileChange}
+              />
+              <div className="flex h-10 items-center gap-2">
+                {imageUrl ? (
+                  <div className="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-md border border-border bg-muted/40 px-3">
+                    <div className="h-7 w-7 flex-shrink-0 overflow-hidden rounded border border-border bg-background">
+                      <img
+                        src={imageUrl}
+                        alt="Product preview"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+                      {imageFileName || getDisplayImageName(imageUrl)}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Change'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => {
+                        setImageUrl('');
+                        setImageFileName('');
                       }}
+                      title="Remove picture"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      id="prod-img"
+                      value={imageUrl}
+                      onChange={(e) => {
+                        setImageUrl(e.target.value);
+                        setImageFileName('');
+                      }}
+                      placeholder="Paste image URL or upload file"
+                      className="h-10 text-xs"
                     />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-mono text-muted-foreground">{imageUrl}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      PNG, JPG, or WebP up to 5 MB
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => setImageUrl('')}
-                    title="Remove image"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <Input
-                  id="prod-img"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Paste image URL (https://...) or click Upload Picture above"
-                />
-              )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-10 flex-shrink-0 px-3 text-xs"
+                      disabled={uploadingImage}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {uploadingImage ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-1.5 h-3.5 w-3.5" />
+                          Upload
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">
