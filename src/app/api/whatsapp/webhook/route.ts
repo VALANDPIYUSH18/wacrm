@@ -33,6 +33,55 @@ function supabaseAdmin() {
   return _adminClient
 }
 
+// In-memory short-TTL cache for whatsapp_config lookups to absorb webhook bursts
+// shortcut: in-memory cache per instance, 60s TTL is adequate for serverless instances
+const configCache = new Map<string, { config: any; expiresAt: number }>()
+const CONFIG_CACHE_TTL_MS = 60_000
+
+async function getCachedWhatsAppConfig(phoneNumberId: string) {
+  const cached = configCache.get(phoneNumberId)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.config
+  }
+
+  const { data: configRows, error: configError } = await supabaseAdmin()
+    .from('whatsapp_config')
+    .select('*')
+    .eq('phone_number_id', phoneNumberId)
+
+  if (configError) {
+    console.error(
+      'Error fetching whatsapp_config for phone_number_id:',
+      phoneNumberId,
+      configError
+    )
+    return null
+  }
+
+  if (!configRows || configRows.length === 0) {
+    console.error('No config found for phone_number_id:', phoneNumberId)
+    return null
+  }
+
+  if (configRows.length > 1) {
+    console.error(
+      `Multiple configs (${configRows.length}) found for phone_number_id:`,
+      phoneNumberId,
+      '— inbound message dropped. Resolve duplicates so each number maps to a single account.',
+      'Account owners:',
+      configRows.map((r: { account_id: string; user_id: string }) => `${r.account_id} (admin ${r.user_id})`)
+    )
+    return null
+  }
+
+  const config = configRows[0]
+  configCache.set(phoneNumberId, {
+    config,
+    expiresAt: Date.now() + CONFIG_CACHE_TTL_MS,
+  })
+  return config
+}
+
 interface WhatsAppMessage {
   id: string
   from: string
@@ -247,42 +296,8 @@ async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
 
       const phoneNumberId = value.metadata.phone_number_id
 
-      // Find user's config by phone_number_id. `.single()` returns
-      // PGRST116 for both 0 rows AND ≥2 rows — distinguish them so
-      // operators see the real cause in logs. ≥2 rows shouldn't happen
-      // post-migration 013 (UNIQUE constraint), but a row created
-      // before the constraint, or a race, would still surface here.
-      const { data: configRows, error: configError } = await supabaseAdmin()
-        .from('whatsapp_config')
-        .select('*')
-        .eq('phone_number_id', phoneNumberId)
-
-      if (configError) {
-        console.error(
-          'Error fetching whatsapp_config for phone_number_id:',
-          phoneNumberId,
-          configError
-        )
-        continue
-      }
-
-      if (!configRows || configRows.length === 0) {
-        console.error('No config found for phone_number_id:', phoneNumberId)
-        continue
-      }
-
-      if (configRows.length > 1) {
-        console.error(
-          `Multiple configs (${configRows.length}) found for phone_number_id:`,
-          phoneNumberId,
-          '— inbound message dropped. Resolve duplicates so each number maps to a single account.',
-          'Account owners:',
-          configRows.map((r: { account_id: string; user_id: string }) => `${r.account_id} (admin ${r.user_id})`)
-        )
-        continue
-      }
-
-      const config = configRows[0]
+      const config = await getCachedWhatsAppConfig(phoneNumberId)
+      if (!config) continue
 
       const decryptedAccessToken = decrypt(config.access_token)
 

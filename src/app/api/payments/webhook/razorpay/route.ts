@@ -65,20 +65,25 @@ export async function POST(request: NextRequest) {
 
     const targetAccountId = accountId || order?.account_id;
 
-    // Verify webhook signature if configured
-    if (targetAccountId) {
-      const config = await getGatewayConfig(targetAccountId, 'razorpay');
-      if (config?.webhookSecret && signature) {
-        const expectedSignature = crypto
-          .createHmac('sha256', config.webhookSecret)
-          .update(rawBody)
-          .digest('hex');
+    // Security check: must resolve target account and verify HMAC signature
+    if (!targetAccountId) {
+      return NextResponse.json({ error: 'Unresolvable order account' }, { status: 400 });
+    }
 
-        if (expectedSignature !== signature) {
-          console.warn('Razorpay webhook HMAC signature mismatch');
-          return NextResponse.json({ error: 'Signature mismatch' }, { status: 400 });
-        }
-      }
+    const config = await getGatewayConfig(targetAccountId, 'razorpay');
+    if (!config?.webhookSecret || !signature) {
+      console.warn('Razorpay webhook rejected: missing webhook secret or signature header');
+      return NextResponse.json({ error: 'Unauthorized webhook' }, { status: 401 });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', config.webhookSecret)
+      .update(rawBody)
+      .digest('hex');
+
+    if (expectedSignature !== signature) {
+      console.warn('Razorpay webhook HMAC signature mismatch');
+      return NextResponse.json({ error: 'Signature mismatch' }, { status: 400 });
     }
 
     // Process payment success events

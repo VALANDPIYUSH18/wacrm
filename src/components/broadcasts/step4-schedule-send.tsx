@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { AudienceConfig } from '@/hooks/use-broadcast-sending';
 import { MessageTemplate } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,15 +13,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { ArrowLeft, Send, Loader2, Users, Save } from 'lucide-react';
-
-interface AudienceConfig {
-  type: string;
-  tagIds?: string[];
-  csvContacts?: { phone: string; name?: string }[];
-}
 
 interface Step4Props {
   name: string;
@@ -68,6 +62,24 @@ export function Step4ScheduleSend({
 
           const uniqueIds = new Set((contactTags ?? []).map((ct) => ct.contact_id));
           setEstimatedReach(uniqueIds.size);
+        } else if (audience.type === 'custom_field' && audience.customField) {
+          const { fieldId, operator, value } = audience.customField;
+          let query = supabase
+            .from('contact_custom_values')
+            .select('contact_id')
+            .eq('custom_field_id', fieldId);
+
+          if (operator === 'is') {
+            query = query.eq('value', value);
+          } else if (operator === 'is_not') {
+            query = query.neq('value', value);
+          } else if (operator === 'contains') {
+            query = query.ilike('value', `%${value}%`);
+          }
+
+          const { data: customVals } = await query;
+          const uniqueIds = new Set((customVals ?? []).map((cv) => cv.contact_id));
+          setEstimatedReach(uniqueIds.size);
         } else if (audience.type === 'csv' && audience.csvContacts) {
           setEstimatedReach(audience.csvContacts.length);
         } else {
@@ -86,9 +98,11 @@ export function Step4ScheduleSend({
       ? 'All Contacts'
       : audience.type === 'tags'
         ? `Tags (${audience.tagIds?.length ?? 0} selected)`
-        : audience.type === 'csv'
-          ? 'CSV Upload'
-          : 'Custom';
+        : audience.type === 'custom_field'
+          ? 'Custom Field Filter'
+          : audience.type === 'csv'
+            ? 'CSV Upload'
+            : 'Custom';
 
   return (
     <div className="space-y-6">
@@ -185,19 +199,18 @@ export function Step4ScheduleSend({
             </Button>
           )}
 
-          <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-          <DialogTrigger
-            render={
-              <Button
-                disabled={!name.trim() || isProcessing}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              />
-            }
+          <Button
+            type="button"
+            onClick={() => setShowConfirm(true)}
+            disabled={!name.trim() || isProcessing}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             <Send className="h-4 w-4" />
             Send Broadcast
-          </DialogTrigger>
-          <DialogContent className="border-border bg-popover sm:max-w-md">
+          </Button>
+
+          <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+            <DialogContent className="border-border bg-popover sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-popover-foreground">Confirm Broadcast</DialogTitle>
               <DialogDescription className="text-muted-foreground">

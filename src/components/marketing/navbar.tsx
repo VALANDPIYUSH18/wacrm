@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
-import { MessageSquare, ArrowRight } from 'lucide-react';
+import { MessageSquare, ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function MarketingNavbar() {
@@ -15,7 +15,8 @@ export function MarketingNavbar() {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-xl font-bold tracking-tight text-foreground">WACRM</span>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-500 border border-emerald-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Meta Cloud API
             </span>
           </div>
@@ -23,8 +24,8 @@ export function MarketingNavbar() {
 
         <nav className="hidden items-center gap-8 md:flex text-sm font-medium text-muted-foreground">
           <a href="#why" className="transition hover:text-foreground">Why WACRM</a>
-          <a href="#verticals" className="transition hover:text-foreground">Target Industries</a>
-          <a href="#features" className="transition hover:text-foreground">Features</a>
+          <a href="#features" className="transition hover:text-foreground">Capabilities</a>
+          <a href="#verticals" className="transition hover:text-foreground">Industries</a>
           <a href="#comparison" className="transition hover:text-foreground">Vs Competitors</a>
           <a href="#pricing" className="transition hover:text-foreground">Pricing</a>
         </nav>
@@ -38,7 +39,7 @@ export function MarketingNavbar() {
           </Link>
           <Link
             href="/signup"
-            className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5 shadow-sm')}
+            className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5 shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground font-medium')}
           >
             Start Free Trial <ArrowRight className="h-4 w-4" />
           </Link>

@@ -14,30 +14,36 @@ export function MarketingFooter() {
               <span className="text-lg font-bold text-foreground">WACRM</span>
             </div>
             <p className="text-sm">
-              The modern WhatsApp CRM and automation engine for high-growth businesses. Eliminate lead leakage and close deals 3x faster.
+              The modern enterprise WhatsApp CRM, AI chatbot, and revenue engine. Turn high-ticket conversations into closed sales 3.8x faster.
             </p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5 text-primary" /> Meta Verified</span>
-              <span className="flex items-center gap-1"><Lock className="h-3.5 w-3.5 text-primary" /> AES-256</span>
+              <span className="flex items-center gap-1 text-emerald-500 font-medium">
+                <Shield className="h-3.5 w-3.5" /> Meta Cloud API
+              </span>
+              <span className="flex items-center gap-1">
+                <Lock className="h-3.5 w-3.5 text-primary" /> AES-256
+              </span>
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Product</h3>
+            <h3 className="text-sm font-semibold text-foreground">Capabilities</h3>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><a href="#features" className="hover:text-foreground">Shared Team Inbox</a></li>
-              <li><a href="#features" className="hover:text-foreground">Visual Flow Builder</a></li>
-              <li><a href="#features" className="hover:text-foreground">Sales Pipelines</a></li>
+              <li><a href="#features" className="hover:text-foreground">Multi-Agent Shared Inbox</a></li>
+              <li><a href="#features" className="hover:text-foreground">Visual Flow & Bot Builder</a></li>
+              <li><a href="#features" className="hover:text-foreground">Kanban Sales Deals</a></li>
+              <li><a href="#features" className="hover:text-foreground">In-Chat Catalog & Payments</a></li>
               <li><a href="#features" className="hover:text-foreground">Broadcast Campaigns</a></li>
-              <li><Link href="/admin" className="hover:text-foreground">Agency Admin Panel</Link></li>
+              <li><Link href="/admin" className="hover:text-foreground">Agency Multi-Tenant Console</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold text-foreground">Target Industries</h3>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><a href="#verticals" className="hover:text-foreground">E-Commerce & D2C</a></li>
+              <li><a href="#verticals" className="hover:text-foreground">Gold & Jewellery Retail</a></li>
               <li><a href="#verticals" className="hover:text-foreground">Real Estate & Developers</a></li>
+              <li><a href="#verticals" className="hover:text-foreground">E-Commerce & D2C</a></li>
               <li><a href="#verticals" className="hover:text-foreground">Healthcare & Dental Clinics</a></li>
               <li><a href="#verticals" className="hover:text-foreground">Automobile Dealerships</a></li>
               <li><a href="#verticals" className="hover:text-foreground">B2B Wholesale & ERP</a></li>
@@ -50,7 +56,7 @@ export function MarketingFooter() {
               <li><Link href="/signup" className="hover:text-foreground">14-Day Free Trial</Link></li>
               <li><Link href="/login" className="hover:text-foreground">Sign In to Dashboard</Link></li>
               <li><Link href="/dashboard" className="hover:text-foreground">Client Workspace</Link></li>
-              <li><a href="#pricing" className="hover:text-foreground">Pricing Plans</a></li>
+              <li><a href="#pricing" className="hover:text-foreground">Transparent Pricing</a></li>
             </ul>
           </div>
         </div>

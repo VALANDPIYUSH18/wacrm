@@ -27,6 +27,7 @@ import {
   inviteUrl,
 } from "@/lib/auth/invitations";
 import { isAccountRole } from "@/lib/auth/roles";
+import { getAccountEntitlements } from "@/lib/billing/entitlements";
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -169,6 +170,20 @@ export async function POST(request: Request) {
       RATE_LIMITS.adminAction,
     );
     if (!limit.success) return rateLimitResponse(limit);
+
+    // Enforce subscription seat quota
+    const entitlements = await getAccountEntitlements(ctx.supabase, ctx.accountId);
+    if (!entitlements.canInviteSeat) {
+      return NextResponse.json(
+        {
+          error: entitlements.isTrialExpired
+            ? 'Your 14-day trial has expired. Upgrade your subscription to invite more team members.'
+            : `Your current ${entitlements.planTier} plan is limited to ${entitlements.maxSeats} seat(s). Upgrade to invite additional members.`,
+          code: 'SEAT_LIMIT_REACHED',
+        },
+        { status: 403 },
+      );
+    }
 
     const body = (await request.json().catch(() => null)) as
       | { role?: unknown; expiresInDays?: unknown; label?: unknown }

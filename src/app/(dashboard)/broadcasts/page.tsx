@@ -273,7 +273,7 @@ export default function BroadcastsPage() {
                         {status.label}
                       </span>
                     </TableCell>
-                    <TableCell className="hidden text-muted-foreground sm:table-cell">
+                    <TableCell className="hidden text-muted-foreground sm:table-cell" suppressHydrationWarning>
                       {new Date(broadcast.created_at).toLocaleDateString()}
                     </TableCell>
                   </TableRow>

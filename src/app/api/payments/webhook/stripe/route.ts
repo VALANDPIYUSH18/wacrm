@@ -62,28 +62,47 @@ export async function POST(request: NextRequest) {
 
     const targetAccountId = accountId || order?.account_id;
 
-    // Verify Stripe signature if webhook secret is configured
-    if (targetAccountId && signatureHeader) {
-      const config = await getGatewayConfig(targetAccountId, 'stripe');
-      if (config?.webhookSecret) {
-        // Parse t=timestamp,v1=signature
-        const items = signatureHeader.split(',');
-        const timestamp = items.find((i) => i.startsWith('t='))?.slice(2);
-        const sig = items.find((i) => i.startsWith('v1='))?.slice(3);
+    // Security check: must resolve target account and verify HMAC signature with replay protection
+    if (!targetAccountId) {
+      return NextResponse.json({ error: 'Unresolvable order account' }, { status: 400 });
+    }
 
-        if (timestamp && sig) {
-          const payload = `${timestamp}.${rawBody}`;
-          const expectedSig = crypto
-            .createHmac('sha256', config.webhookSecret)
-            .update(payload)
-            .digest('hex');
+    if (!signatureHeader) {
+      return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 401 });
+    }
 
-          if (expectedSig !== sig) {
-            console.warn('Stripe webhook signature mismatch');
-            return NextResponse.json({ error: 'Signature mismatch' }, { status: 400 });
-          }
-        }
-      }
+    const config = await getGatewayConfig(targetAccountId, 'stripe');
+    if (!config?.webhookSecret) {
+      console.warn('Stripe webhook rejected: missing webhook secret for account');
+      return NextResponse.json({ error: 'Unauthorized webhook' }, { status: 401 });
+    }
+
+    // Parse t=timestamp,v1=signature
+    const items = signatureHeader.split(',');
+    const timestamp = items.find((i) => i.startsWith('t='))?.slice(2);
+    const sig = items.find((i) => i.startsWith('v1='))?.slice(3);
+
+    if (!timestamp || !sig) {
+      return NextResponse.json({ error: 'Malformed stripe-signature header' }, { status: 400 });
+    }
+
+    // Enforce 5-minute replay tolerance
+    const timestampSeconds = Number(timestamp);
+    const currentSeconds = Math.floor(Date.now() / 1000);
+    if (isNaN(timestampSeconds) || Math.abs(currentSeconds - timestampSeconds) > 300) {
+      console.warn('Stripe webhook rejected: timestamp outside 300s replay window');
+      return NextResponse.json({ error: 'Timestamp expired' }, { status: 400 });
+    }
+
+    const payload = `${timestamp}.${rawBody}`;
+    const expectedSig = crypto
+      .createHmac('sha256', config.webhookSecret)
+      .update(payload)
+      .digest('hex');
+
+    if (expectedSig !== sig) {
+      console.warn('Stripe webhook signature mismatch');
+      return NextResponse.json({ error: 'Signature mismatch' }, { status: 400 });
     }
 
     if (event.type === 'checkout.session.completed') {

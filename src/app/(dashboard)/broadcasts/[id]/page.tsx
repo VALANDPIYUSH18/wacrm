@@ -296,7 +296,7 @@ export default function BroadcastDetailPage() {
             <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
               <span>Template: {broadcast.template_name}</span>
               <span>-</span>
-              <span>
+              <span suppressHydrationWarning>
                 Created {new Date(broadcast.created_at).toLocaleDateString()}
               </span>
             </div>
@@ -404,15 +404,7 @@ export default function BroadcastDetailPage() {
           </h2>
           <div className="flex items-center gap-2">
             <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-border text-muted-foreground hover:bg-muted"
-                  />
-                }
-              >
+              <DropdownMenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
                 <Filter className="h-3.5 w-3.5" />
                 {statusFilter === 'all'
                   ? 'All statuses'
@@ -497,17 +489,17 @@ export default function BroadcastDetailPage() {
                           {rStatus.label}
                         </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-muted-foreground" suppressHydrationWarning>
                         {recipient.sent_at
                           ? new Date(recipient.sent_at).toLocaleString()
                           : '-'}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-muted-foreground" suppressHydrationWarning>
                         {recipient.delivered_at
                           ? new Date(recipient.delivered_at).toLocaleString()
                           : '-'}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-muted-foreground" suppressHydrationWarning>
                         {recipient.read_at
                           ? new Date(recipient.read_at).toLocaleString()
                           : '-'}
