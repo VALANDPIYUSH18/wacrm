@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   ShoppingBag,
@@ -15,9 +15,13 @@ import {
   DollarSign,
   Package,
   Sparkles,
+  Upload,
+  Image as ImageIcon,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { canEditSettings } from '@/lib/auth/roles';
+import { uploadAccountMedia, MEDIA_MAX_BYTES_BY_KIND } from '@/lib/storage/upload-media';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +66,34 @@ export default function ProductsPage() {
   const [sku, setSku] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (PNG, JPG, WebP)');
+      return;
+    }
+    if (file.size > MEDIA_MAX_BYTES_BY_KIND.image) {
+      toast.error('Image must be under 5 MB');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const res = await uploadAccountMedia('chat-media', file);
+      setImageUrl(res.publicUrl);
+      toast.success('Picture uploaded');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload picture');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -392,26 +424,85 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="prod-sku">SKU / Code (Optional)</Label>
-                <Input
-                  id="prod-sku"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="WORKSHOP-01"
+            <div className="space-y-1.5">
+              <Label htmlFor="prod-sku">SKU / Code (Optional)</Label>
+              <Input
+                id="prod-sku"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="WORKSHOP-01"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="prod-img">Product Picture (Optional)</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleImageFileChange}
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={uploadingImage}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadingImage ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                      Upload Picture
+                    </>
+                  )}
+                </Button>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="prod-img">Image URL (Optional)</Label>
+              {imageUrl ? (
+                <div className="relative flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-2">
+                  <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-md border border-border bg-background">
+                    <img
+                      src={imageUrl}
+                      alt="Product preview"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-mono text-muted-foreground">{imageUrl}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      PNG, JPG, or WebP up to 5 MB
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    onClick={() => setImageUrl('')}
+                    title="Remove image"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
                 <Input
                   id="prod-img"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://..."
+                  placeholder="Paste image URL (https://...) or click Upload Picture above"
                 />
-              </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
