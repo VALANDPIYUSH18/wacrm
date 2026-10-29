@@ -29,6 +29,7 @@ import { PipelineDonut } from '@/components/dashboard/pipeline-donut';
 import { ResponseTimeChart } from '@/components/dashboard/response-time-chart';
 import { ActivityFeed } from '@/components/dashboard/activity-feed';
 import { OnboardingWizard } from '@/components/dashboard/onboarding-wizard';
+import { FirstTimeOnboardingModal } from '@/components/dashboard/first-time-onboarding-modal';
 
 type RangeDays = 7 | 30 | 90;
 
@@ -129,8 +130,9 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Onboarding Wizard */}
+      {/* Onboarding Wizard & First-Time Modal */}
       <OnboardingWizard />
+      <FirstTimeOnboardingModal />
 
       {/* Metric cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

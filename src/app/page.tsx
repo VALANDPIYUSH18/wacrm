@@ -586,9 +586,9 @@ export default function LandingPage() {
               <CardHeader>
                 <CardTitle className="text-xl font-bold">Starter</CardTitle>
                 <CardDescription>For boutique teams and early startups</CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-extrabold text-foreground">$29</span>
-                  <span className="text-muted-foreground"> / month</span>
+                <div className="mt-4 flex items-baseline gap-1.5">
+                  <span className="text-4xl font-extrabold text-foreground">₹1,499</span>
+                  <span className="text-muted-foreground text-sm">($29) / month</span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -622,9 +622,9 @@ export default function LandingPage() {
                     <Badge variant="secondary" className="text-xs text-primary bg-primary/10">Recommended</Badge>
                   </div>
                   <CardDescription>For growing businesses and sales teams</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-extrabold text-foreground">$79</span>
-                    <span className="text-muted-foreground"> / month</span>
+                  <div className="mt-4 flex items-baseline gap-1.5">
+                    <span className="text-4xl font-extrabold text-foreground">₹3,499</span>
+                    <span className="text-muted-foreground text-sm">($79) / month</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -650,9 +650,9 @@ export default function LandingPage() {
               <CardHeader>
                 <CardTitle className="text-xl font-bold">Scale</CardTitle>
                 <CardDescription>For high-volume operations & enterprises</CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-extrabold text-foreground">$179</span>
-                  <span className="text-muted-foreground"> / month</span>
+                <div className="mt-4 flex items-baseline gap-1.5">
+                  <span className="text-4xl font-extrabold text-foreground">₹7,999</span>
+                  <span className="text-muted-foreground text-sm">($179) / month</span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">

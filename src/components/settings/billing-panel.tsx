@@ -39,6 +39,7 @@ export function BillingPanel() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(
     null
   );
+  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
 
   const canManage = accountRole === 'owner' || accountRole === 'admin';
 
@@ -158,6 +159,34 @@ export function BillingPanel() {
         </CardHeader>
       </Card>
 
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-foreground">Available Subscription Plans</h3>
+        <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => setCurrency('INR')}
+            className={`px-3 py-1 rounded-md transition-colors ${
+              currency === 'INR'
+                ? 'bg-background text-foreground shadow-sm font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            INR (₹)
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrency('USD')}
+            className={`px-3 py-1 rounded-md transition-colors ${
+              currency === 'USD'
+                ? 'bg-background text-foreground shadow-sm font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            USD ($)
+          </button>
+        </div>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-3">
         {(Object.keys(SAAS_PLANS) as PlanTier[]).map((tierKey) => {
           const plan = SAAS_PLANS[tierKey];
@@ -184,7 +213,9 @@ export function BillingPanel() {
                 </CardDescription>
                 <div className="mt-4 flex items-baseline gap-1">
                   <span className="text-3xl font-bold tracking-tight">
-                    ${plan.priceMonthly}
+                    {currency === 'INR'
+                      ? `₹${plan.priceInrMonthly.toLocaleString('en-IN')}`
+                      : `$${plan.priceMonthly}`}
                   </span>
                   <span className="text-muted-foreground text-sm">/month</span>
                 </div>

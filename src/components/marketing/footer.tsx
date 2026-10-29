@@ -55,14 +55,21 @@ export function MarketingFooter() {
             <ul className="mt-3 space-y-2 text-sm">
               <li><Link href="/signup" className="hover:text-foreground">14-Day Free Trial</Link></li>
               <li><Link href="/login" className="hover:text-foreground">Sign In to Dashboard</Link></li>
-              <li><Link href="/dashboard" className="hover:text-foreground">Client Workspace</Link></li>
-              <li><a href="#pricing" className="hover:text-foreground">Transparent Pricing</a></li>
+              <li><Link href="/privacy" className="hover:text-foreground">Privacy Policy (DPDP)</Link></li>
+              <li><Link href="/terms" className="hover:text-foreground">Terms of Service</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-8 border-t border-border pt-8 text-center text-xs">
+        <div className="mt-8 border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
           <p>&copy; {new Date().getFullYear()} WACRM. All rights reserved. Powered by official Meta WhatsApp Cloud API.</p>
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+            <span>•</span>
+            <a href="mailto:support@wacrm-suwu.vercel.app" className="hover:text-foreground transition-colors">Support</a>
+          </div>
         </div>
       </div>
     </footer>
