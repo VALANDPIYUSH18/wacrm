@@ -59,11 +59,8 @@ interface Props {
 }
 
 export function FlowEditorShell({ initialFlow, initialNodes }: Props) {
-  // Read the persisted choice in the useState initializer. Safe even
-  // though this is a client component because the parent page only
-  // mounts us AFTER a client-side fetch resolves — there's no SSR
-  // pass for this subtree, so no hydration mismatch to worry about.
-  // Default to `canvas` (the new default) when nothing is saved.
+  // Default to `list` so users have an instantly reliable and fully functional
+  // editing surface without canvas initialization hurdles.
   const [view, setView] = useState<View>(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
@@ -71,7 +68,7 @@ export function FlowEditorShell({ initialFlow, initialNodes }: Props) {
     } catch {
       // Private browsing / disabled storage — fall through to default.
     }
-    return "canvas";
+    return "list";
   });
 
   // Live mobile detection. We don't render canvas under the
