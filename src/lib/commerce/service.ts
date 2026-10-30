@@ -45,13 +45,13 @@ async function createRazorpayLink(
     },
   };
 
-  // Razorpay customer contact requires digits only (optional country code, min 8 digits)
+  // Razorpay customer contact requires digits with international country code prefix
   if (params.customerPhone) {
     const cleanPhone = params.customerPhone.replace(/\D/g, '');
-    if (cleanPhone.length >= 8) {
-      body.customer = {
-        contact: cleanPhone.startsWith('91') && cleanPhone.length === 12 ? `+${cleanPhone}` : cleanPhone,
-      };
+    if (cleanPhone.length === 10) {
+      body.customer = { contact: `+91${cleanPhone}` };
+    } else if (cleanPhone.length >= 8) {
+      body.customer = { contact: `+${cleanPhone}` };
     }
   }
 

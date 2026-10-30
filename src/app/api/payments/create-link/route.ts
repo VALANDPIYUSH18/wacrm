@@ -137,8 +137,6 @@ export async function POST(request: NextRequest) {
       message: insertedMsg,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    console.error('[POST /api/payments/create-link] Error:', err);
-    return NextResponse.json({ error: message }, { status: 400 });
+    return toErrorResponse(err);
   }
 }

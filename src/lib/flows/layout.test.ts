@@ -125,4 +125,12 @@ describe("autoLayout", () => {
     // (rank gap is fixed) but they DO offset x to keep nodes centered.
     expect(narrow.get("a")!.y).toBe(wide.get("a")!.y);
   });
+
+  it("handles empty or single node gracefully without crashing", () => {
+    const empty = autoLayout([], []);
+    expect(empty.size).toBe(0);
+
+    const single = autoLayout([{ id: "only" }], []);
+    expect(single.get("only")).toEqual({ x: 0, y: 0 });
+  });
 });

@@ -129,7 +129,17 @@ export function autoLayout(
       });
     }
   } catch (err) {
-    console.warn("Dagre autoLayout failed:", err);
+    console.warn("Dagre autoLayout failed, using grid fallback:", err);
+    // Stagger nodes down vertically as fallback so they don't collapse at (0, 0)
+    const opts = { ...DEFAULTS, ...options };
+    nodes.forEach((n, idx) => {
+      if (n?.id && !positions.has(n.id)) {
+        positions.set(n.id, {
+          x: 0,
+          y: idx * (opts.defaultHeight + opts.rankSep),
+        });
+      }
+    });
   }
   return positions;
 }
