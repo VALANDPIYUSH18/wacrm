@@ -45,10 +45,14 @@ async function createRazorpayLink(
     },
   };
 
+  // Razorpay customer contact requires digits only (optional country code, min 8 digits)
   if (params.customerPhone) {
-    body.customer = {
-      contact: params.customerPhone,
-    };
+    const cleanPhone = params.customerPhone.replace(/\D/g, '');
+    if (cleanPhone.length >= 8) {
+      body.customer = {
+        contact: cleanPhone.startsWith('91') && cleanPhone.length === 12 ? `+${cleanPhone}` : cleanPhone,
+      };
+    }
   }
 
   const res = await fetch('https://api.razorpay.com/v1/payment_links', {

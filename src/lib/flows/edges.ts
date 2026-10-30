@@ -42,7 +42,8 @@ export function deriveCanvasEdges(nodes: BuilderNode[]): CanvasEdge[] {
   const edges: CanvasEdge[] = [];
 
   for (const node of nodes) {
-    const cfg = node.config;
+    if (!node) continue;
+    const cfg = node.config || {};
     switch (node.node_type) {
       case "start":
       case "send_message":
@@ -172,7 +173,8 @@ export interface OutgoingSlot {
 }
 
 export function outgoingSlots(node: BuilderNode): OutgoingSlot[] {
-  const cfg = node.config;
+  if (!node) return [];
+  const cfg = node.config || {};
   switch (node.node_type) {
     case "start":
     case "send_message":

@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { Product } from '@/lib/commerce/types';
+import type { Message } from '@/types';
 
 interface ProductPaymentModalProps {
   open: boolean;
@@ -34,6 +35,7 @@ interface ProductPaymentModalProps {
   conversationId: string;
   contactId?: string;
   onSuccess?: () => void;
+  onNewMessage?: (msg: Message) => void;
 }
 
 export function ProductPaymentModal({
@@ -42,6 +44,7 @@ export function ProductPaymentModal({
   conversationId,
   contactId,
   onSuccess,
+  onNewMessage,
 }: ProductPaymentModalProps) {
   const [mode, setMode] = useState<'catalog' | 'custom'>('catalog');
   const [products, setProducts] = useState<Product[]>([]);
@@ -130,6 +133,10 @@ export function ProductPaymentModal({
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to create payment link');
+      }
+
+      if (data.message && onNewMessage) {
+        onNewMessage(data.message as Message);
       }
 
       toast.success('Payment request sent to customer via WhatsApp');

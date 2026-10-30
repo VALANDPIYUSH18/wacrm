@@ -91,41 +91,45 @@ export function autoLayout(
   edges: LayoutEdge[],
   options: LayoutOptions = {},
 ): Map<string, LayoutPosition> {
-  const opts = { ...DEFAULTS, ...options };
-  const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  g.setGraph({
-    rankdir: opts.direction,
-    ranksep: opts.rankSep,
-    nodesep: opts.nodeSep,
-  });
-
-  for (const n of nodes) {
-    g.setNode(n.id, {
-      width: n.width ?? opts.defaultWidth,
-      height: n.height ?? opts.defaultHeight,
-    });
-  }
-  for (const e of edges) {
-    // Dagre tolerates edges to/from non-existent nodes by inserting
-    // them as zero-size — that would silently warp the layout. Skip
-    // dangling edges instead; the canvas's edge derivation already
-    // filters them but defending here keeps this helper standalone.
-    if (g.node(e.source) && g.node(e.target)) {
-      g.setEdge(e.source, e.target);
-    }
-  }
-
-  Dagre.layout(g);
-
   const positions = new Map<string, LayoutPosition>();
-  for (const n of nodes) {
-    const laid = g.node(n.id);
-    if (!laid) continue;
-    // Dagre returns the center; React-Flow wants the top-left.
-    positions.set(n.id, {
-      x: laid.x - (n.width ?? opts.defaultWidth) / 2,
-      y: laid.y - (n.height ?? opts.defaultHeight) / 2,
+  if (!nodes || nodes.length === 0) return positions;
+
+  try {
+    const opts = { ...DEFAULTS, ...options };
+    const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+    g.setGraph({
+      rankdir: opts.direction,
+      ranksep: opts.rankSep,
+      nodesep: opts.nodeSep,
     });
+
+    for (const n of nodes) {
+      if (!n || !n.id) continue;
+      g.setNode(n.id, {
+        width: n.width ?? opts.defaultWidth,
+        height: n.height ?? opts.defaultHeight,
+      });
+    }
+    for (const e of edges) {
+      if (e?.source && e?.target && g.node(e.source) && g.node(e.target)) {
+        g.setEdge(e.source, e.target);
+      }
+    }
+
+    Dagre.layout(g);
+
+    for (const n of nodes) {
+      if (!n || !n.id) continue;
+      const laid = g.node(n.id);
+      if (!laid) continue;
+      // Dagre returns the center; React-Flow wants the top-left.
+      positions.set(n.id, {
+        x: laid.x - (n.width ?? opts.defaultWidth) / 2,
+        y: laid.y - (n.height ?? opts.defaultHeight) / 2,
+      });
+    }
+  } catch (err) {
+    console.warn("Dagre autoLayout failed:", err);
   }
   return positions;
 }

@@ -132,3 +132,22 @@ describe("defaultConfigFor", () => {
     expect(defaultConfigFor("end")).toEqual({});
   });
 });
+
+describe("safe fallbacks for node rendering", () => {
+  it("provides safe color fallbacks for unexpected node types", async () => {
+    const { nodeColors } = await import("./shared");
+    const colors = nodeColors("unknown_type" as unknown as NodeType);
+    expect(colors).toHaveProperty("solid");
+    expect(colors.solid).toContain("oklch");
+  });
+
+  it("safely summarizes nodes with null/undefined configs", async () => {
+    const { summarizeNode } = await import("./shared");
+    const summary = summarizeNode({
+      node_key: "bad_node",
+      node_type: "send_message",
+      config: null as unknown as Record<string, unknown>,
+    });
+    expect(summary).toBeNull();
+  });
+});

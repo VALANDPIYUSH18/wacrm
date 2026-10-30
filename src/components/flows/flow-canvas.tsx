@@ -131,16 +131,27 @@ function slotColor(nodeType: NodeType, slotId: string, fallback: string) {
 }
 
 function FlowNodeCard({ data, selected }: NodeProps) {
-  const { node, isEntry, isFlashed } = data as NodeData;
-  const meta = NODE_META[node.node_type];
-  const c = nodeColors(node.node_type);
+  const nodeData = (data as NodeData) || {};
+  const node = nodeData.node;
+  if (!node) return null;
+  const nodeType = node.node_type || 'send_message';
+  const meta = NODE_META[nodeType] || NODE_META.send_message || {
+    label: nodeType,
+    icon: Plus,
+    color: 'text-primary',
+    blurb: '',
+    category: 'messaging',
+  };
+  const c = nodeColors(nodeType);
   const summary = summarizeNode(node);
   const slots = outgoingSlots(node);
+  const isEntry = Boolean(nodeData.isEntry);
+  const isFlashed = Boolean(nodeData.isFlashed);
   // Start nodes are entry-only; nothing ever targets them, so they
   // don't need an incoming Handle. Every other node type accepts
   // incoming edges (including terminal handoff / end — they're the
   // common targets).
-  const hasTarget = node.node_type !== 'start';
+  const hasTarget = nodeType !== 'start';
   // Single-slot nodes get a single source handle floated on the right
   // edge of the card. Multi-slot nodes (condition, send_buttons,
   // send_list) render slot rows inline so each handle visually sits
@@ -504,15 +515,6 @@ function FlowCanvasInner() {
     setState((s) => ({ ...s, entry_node_id: selectedNodeKey }));
   }, [selectedNodeKey, setState]);
 
-  if (rfNodes.length === 0) {
-    return (
-      <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3 text-sm">
-        <p>No nodes yet.</p>
-        <CanvasAddNodeButton />
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="h-full w-full overflow-hidden">
@@ -520,7 +522,7 @@ function FlowCanvasInner() {
           nodes={rfNodes}
           edges={rfEdges}
           nodeTypes={NODE_TYPES}
-          fitView
+          fitView={rfNodes.length > 0}
           fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
           proOptions={{ hideAttribution: true }}
           onNodesChange={handleNodesChange}
@@ -555,9 +557,10 @@ function FlowCanvasInner() {
           <MiniMap
             pannable
             zoomable
-            nodeColor={(n) =>
-              nodeColors((n.data as NodeData).node.node_type).solid
-            }
+            nodeColor={(n) => {
+              const nodeType = (n.data as NodeData)?.node?.node_type || 'send_message';
+              return nodeColors(nodeType).solid;
+            }}
             nodeStrokeWidth={0}
             nodeBorderRadius={3}
             maskColor="color-mix(in oklch, var(--background) 70%, transparent)"
@@ -567,6 +570,15 @@ function FlowCanvasInner() {
             <CanvasAddNodeButton />
           </Panel>
         </ReactFlow>
+
+        {rfNodes.length === 0 && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-xs text-sm text-muted-foreground pointer-events-none">
+            <p>No nodes yet.</p>
+            <div className="pointer-events-auto">
+              <CanvasAddNodeButton />
+            </div>
+          </div>
+        )}
       </div>
 
       <NodeEditSheet
@@ -697,30 +709,37 @@ const ADD_NODE_TYPES: NodeType[] = [
 
 function CanvasAddNodeButton() {
   const reactFlow = useReactFlow();
-  const { addNode, updateNodePosition } = useFlowEditor();
+  const { addNode } = useFlowEditor();
 
   const handleAdd = (type: NodeType) => {
-    const key = addNode(type);
-    // Place the new node at the visible canvas center. The Panel's
-    // own DOM lives inside ReactFlow so we can climb up to find the
-    // .react-flow root and read its bounding rect. If we can't find
-    // it (test envs, etc.), addNode's default (0, 0) is the fallback
-    // and the user can drag the node into view.
-    const root = document.querySelector('.react-flow') as HTMLElement | null;
-    if (!root) return;
-    const rect = root.getBoundingClientRect();
-    const center = reactFlow.screenToFlowPosition({
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
-    });
-    // NODE_WIDTH / NODE_HEIGHT are the dagre layout defaults; offset
-    // so the card sits visually centered rather than top-left at the
-    // viewport center.
-    updateNodePosition(
-      key,
-      center.x - NODE_WIDTH / 2,
-      center.y - NODE_HEIGHT / 2
-    );
+    let position: { x: number; y: number } | undefined;
+    try {
+      const root = document.querySelector('.react-flow') as HTMLElement | null;
+      if (root) {
+        const rect = root.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const center = reactFlow.screenToFlowPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          });
+          if (
+            typeof center?.x === 'number' &&
+            typeof center?.y === 'number' &&
+            !isNaN(center.x) &&
+            !isNaN(center.y)
+          ) {
+            position = {
+              x: center.x - NODE_WIDTH / 2,
+              y: center.y - NODE_HEIGHT / 2,
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Could not compute center canvas position for new node:', e);
+    }
+
+    addNode(type, position);
   };
 
   return (

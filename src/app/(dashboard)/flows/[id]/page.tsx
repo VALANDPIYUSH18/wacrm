@@ -1,12 +1,97 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, LayoutList, Loader2, RotateCw } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 import { FlowEditorShell } from "@/components/flows/flow-editor-shell";
 import type { FlowRow, FlowNodeRow } from "@/lib/flows/types";
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  onSwitchToList?: () => void;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class FlowErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Flow editor render error:", error, errorInfo);
+  }
+
+  handleSwitchToList = () => {
+    try {
+      window.localStorage.setItem("wacrm.flowEditor.view", "list");
+    } catch {
+      // ignore
+    }
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-full min-h-[400px] flex-col items-center justify-center p-6 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive mb-3">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <h2 className="text-base font-semibold text-foreground">
+            Flow Editor encountered a display issue
+          </h2>
+          <p className="mt-1.5 max-w-md text-xs text-muted-foreground">
+            {this.state.error?.message ||
+              "An unexpected error occurred while rendering the flow canvas. You can switch to List View or reload."}
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={this.handleSwitchToList}
+              className="gap-1.5 text-xs"
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              Switch to List View
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="gap-1.5 text-xs"
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+              Reload Canvas
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => (window.location.href = "/flows")}
+              className="gap-1.5 text-xs"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Flows
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 /**
  * Flow editor shell.
@@ -84,5 +169,9 @@ export default function FlowEditorPage() {
     );
   }
 
-  return <FlowEditorShell initialFlow={flow} initialNodes={nodes} />;
+  return (
+    <FlowErrorBoundary>
+      <FlowEditorShell initialFlow={flow} initialNodes={nodes} />
+    </FlowErrorBoundary>
+  );
 }

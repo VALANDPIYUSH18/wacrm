@@ -39,6 +39,7 @@ import {
 } from "@/lib/storage/upload-media";
 import { ReplyQuote } from "./reply-quote";
 import { ProductPaymentModal } from "./product-payment-modal";
+import type { Message } from "@/types";
 
 /** Media content types an agent can send from the composer. */
 export type ComposerMediaKind = "image" | "video" | "document" | "audio";
@@ -101,6 +102,7 @@ interface MessageComposerProps {
   onOpenTemplates: () => void;
   replyTo?: ReplyDraft | null;
   onClearReply?: () => void;
+  onNewMessage?: (msg: Message) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -122,6 +124,7 @@ export function MessageComposer({
   onOpenTemplates,
   replyTo,
   onClearReply,
+  onNewMessage,
 }: MessageComposerProps) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -651,6 +654,7 @@ export function MessageComposer({
         open={paymentModalOpen}
         onOpenChange={setPaymentModalOpen}
         conversationId={conversationId}
+        onNewMessage={onNewMessage}
       />
     </div>
   );

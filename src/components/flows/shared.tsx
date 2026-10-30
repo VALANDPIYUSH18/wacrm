@@ -221,7 +221,7 @@ export interface NodeColors {
 }
 
 export function nodeColors(type: NodeType): NodeColors {
-  const t = NODE_HUE[type];
+  const t = NODE_HUE[type] || NODE_HUE.send_message || { l: 0.6, c: 0.18, h: 293 };
   const solid = `oklch(${t.l} ${t.c} ${t.h})`;
   return {
     solid,
@@ -257,9 +257,12 @@ export function NodeIconChip({
   iconSize?: number;
   className?: string;
 }) {
-  const meta = NODE_META[type];
+  const meta = NODE_META[type] || NODE_META.send_message || {
+    icon: Workflow,
+    color: 'text-primary',
+  };
   const c = nodeColors(type);
-  const Icon = meta.icon;
+  const Icon = meta.icon || Workflow;
   return (
     <span
       className={cn(
@@ -306,7 +309,8 @@ export function truncate(s: string, max = 80): string {
 }
 
 export function summarizeNode(node: BuilderNode): string | null {
-  const cfg = node.config;
+  if (!node) return null;
+  const cfg = node.config || {};
   switch (node.node_type) {
     case 'start':
     case 'end':
