@@ -100,7 +100,13 @@ export async function POST(request: NextRequest) {
       .update(payload)
       .digest('hex');
 
-    if (expectedSig !== sig) {
+    const expectedBuf = Buffer.from(expectedSig);
+    const sigBuf = Buffer.from(sig);
+
+    if (
+      expectedBuf.length !== sigBuf.length ||
+      !crypto.timingSafeEqual(expectedBuf, sigBuf)
+    ) {
       console.warn('Stripe webhook signature mismatch');
       return NextResponse.json({ error: 'Signature mismatch' }, { status: 400 });
     }

@@ -81,7 +81,13 @@ export async function POST(request: NextRequest) {
       .update(rawBody)
       .digest('hex');
 
-    if (expectedSignature !== signature) {
+    const expectedBuf = Buffer.from(expectedSignature);
+    const signatureBuf = Buffer.from(signature);
+
+    if (
+      expectedBuf.length !== signatureBuf.length ||
+      !crypto.timingSafeEqual(expectedBuf, signatureBuf)
+    ) {
       console.warn('Razorpay webhook HMAC signature mismatch');
       return NextResponse.json({ error: 'Signature mismatch' }, { status: 400 });
     }

@@ -84,12 +84,18 @@ async function createStripeLink(
 ): Promise<{ paymentUrl: string; providerPaymentLinkId: string }> {
   const amountInCents = Math.round(params.amount * 100);
 
+  const appUrl = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    'http://localhost:3000'
+  ).replace(/\/+$/, '');
+
   const formBody = new URLSearchParams({
     'mode': 'payment',
     'line_items[0][price_data][currency]': params.currency.toLowerCase(),
     'line_items[0][price_data][unit_amount]': amountInCents.toString(),
     'line_items[0][price_data][product_data][name]': params.title,
-    'success_url': 'https://wacrm-peach-iota.vercel.app',
+    'success_url': `${appUrl}/settings?payment=success`,
     'metadata[orderId]': params.orderId,
     'metadata[conversationId]': params.conversationId,
     'metadata[accountId]': params.accountId,

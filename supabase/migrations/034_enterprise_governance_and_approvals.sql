@@ -79,7 +79,7 @@ CREATE POLICY "inventory_items_select" ON inventory_items
 
 CREATE POLICY "inventory_items_insert" ON inventory_items
   FOR INSERT
-  WITH CHECK (is_account_member(account_id, 'admin'));
+  WITH CHECK (is_account_member(account_id, 'agent'));
 
 CREATE POLICY "inventory_items_update" ON inventory_items
   FOR UPDATE

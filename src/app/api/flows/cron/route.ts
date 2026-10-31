@@ -73,40 +73,47 @@ export async function GET(request: Request) {
     flows: { fallback_policy: unknown } | { fallback_policy: unknown }[] | null
   }
 
-  let swept = 0
+  const expiredList: Array<{ id: string; ageHours: number; policyHours: number }> = []
   for (const r of runs as Row[]) {
     const flowsField = Array.isArray(r.flows) ? r.flows[0] : r.flows
     const policy = resolveFallbackPolicy(flowsField?.fallback_policy ?? null)
     const lastAdvanced = new Date(r.last_advanced_at)
     const ageHours = (now.getTime() - lastAdvanced.getTime()) / (1000 * 60 * 60)
-    if (ageHours < policy.on_timeout_hours) continue
-
-    // Mark timed_out — guarded by the precondition `status='active'`
-    // so concurrent advance from a late inbound doesn't overwrite a
-    // legitimate update.
-    const { data: updated } = await admin
-      .from('flow_runs')
-      .update({
-        status: 'timed_out',
-        ended_at: now.toISOString(),
-        end_reason: 'stale_sweep',
-      })
-      .eq('id', r.id)
-      .eq('status', 'active')
-      .select('id')
-
-    if (Array.isArray(updated) && updated.length > 0) {
-      await admin.from('flow_run_events').insert({
-        flow_run_id: r.id,
-        event_type: 'timeout',
-        payload: {
-          age_hours: Math.round(ageHours * 10) / 10,
-          policy_hours: policy.on_timeout_hours,
-        },
-      })
-      swept += 1
+    if (ageHours >= policy.on_timeout_hours) {
+      expiredList.push({ id: r.id, ageHours, policyHours: policy.on_timeout_hours })
     }
   }
 
-  return NextResponse.json({ swept })
+  if (expiredList.length === 0) return NextResponse.json({ swept: 0 })
+
+  // Bulk update timed_out status in one query
+  const expiredIds = expiredList.map((e) => e.id)
+  const { data: updated } = await admin
+    .from('flow_runs')
+    .update({
+      status: 'timed_out',
+      ended_at: now.toISOString(),
+      end_reason: 'stale_sweep',
+    })
+    .in('id', expiredIds)
+    .eq('status', 'active')
+    .select('id')
+
+  const updatedIds = new Set((updated || []).map((u: { id: string }) => u.id))
+  const eventsToInsert = expiredList
+    .filter((e) => updatedIds.has(e.id))
+    .map((e) => ({
+      flow_run_id: e.id,
+      event_type: 'timeout',
+      payload: {
+        age_hours: Math.round(e.ageHours * 10) / 10,
+        policy_hours: e.policyHours,
+      },
+    }))
+
+  if (eventsToInsert.length > 0) {
+    await admin.from('flow_run_events').insert(eventsToInsert)
+  }
+
+  return NextResponse.json({ swept: updatedIds.size })
 }

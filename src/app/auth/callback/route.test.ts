@@ -27,6 +27,18 @@ describe('GET /auth/callback', () => {
     expect(response.headers.get('location')).toContain('/dashboard');
   });
 
+  it('sanitizes open-redirect attempts in next parameter', async () => {
+    mockExchangeCodeForSession.mockResolvedValue({ error: null });
+
+    const maliciousRequest = new Request(
+      'https://wacrm-suwu.vercel.app/auth/callback?code=valid-code&next=//attacker.com/steal'
+    );
+    const response = await GET(maliciousRequest);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe('https://wacrm-suwu.vercel.app/dashboard');
+  });
+
   it('redirects to login with error when code exchange fails', async () => {
     mockExchangeCodeForSession.mockResolvedValue({ error: new Error('Expired code') });
 

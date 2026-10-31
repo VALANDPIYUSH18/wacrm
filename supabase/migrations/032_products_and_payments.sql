@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS products (
   image_url TEXT,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_products_account_sku UNIQUE (account_id, sku)
 );
 
 CREATE INDEX IF NOT EXISTS idx_products_account_active ON products(account_id, is_active);

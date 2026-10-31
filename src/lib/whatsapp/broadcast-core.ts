@@ -278,54 +278,62 @@ export async function deliverBroadcast(
   let sentCount = 0;
 
   try {
-    for (const recipient of plan.planned) {
-      const variants = phoneVariants(recipient.phone);
-      let sentMessageId: string | null = null;
-      let lastError: string | null = null;
+    // Concurrency limit of 10 keeps execution well under serverless timeout ceilings
+    // while respecting Meta API rate limits.
+    const CONCURRENCY_LIMIT = 10;
+    for (let i = 0; i < plan.planned.length; i += CONCURRENCY_LIMIT) {
+      const chunk = plan.planned.slice(i, i + CONCURRENCY_LIMIT);
+      await Promise.all(
+        chunk.map(async (recipient) => {
+          const variants = phoneVariants(recipient.phone);
+          let sentMessageId: string | null = null;
+          let lastError: string | null = null;
 
-      for (const variant of variants) {
-        try {
-          const result = await sendTemplateMessage({
-            phoneNumberId: plan.phoneNumberId,
-            accessToken: plan.accessToken,
-            to: variant,
-            templateName: plan.templateName,
-            language: plan.templateLanguage,
-            template: plan.templateRow ?? undefined,
-            params: recipient.params,
-            messageParams: recipient.messageParams,
-          });
-          sentMessageId = result.messageId;
-          lastError = null;
-          break;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          lastError = message;
-          // Only a "recipient not allowed" error is worth another variant.
-          if (!isRecipientNotAllowedError(message)) break;
-        }
-      }
+          for (const variant of variants) {
+            try {
+              const result = await sendTemplateMessage({
+                phoneNumberId: plan.phoneNumberId,
+                accessToken: plan.accessToken,
+                to: variant,
+                templateName: plan.templateName,
+                language: plan.templateLanguage,
+                template: plan.templateRow ?? undefined,
+                params: recipient.params,
+                messageParams: recipient.messageParams,
+              });
+              sentMessageId = result.messageId;
+              lastError = null;
+              break;
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Unknown error';
+              lastError = message;
+              // Only a "recipient not allowed" error is worth another variant.
+              if (!isRecipientNotAllowedError(message)) break;
+            }
+          }
 
-      if (sentMessageId) {
-        sentCount++;
-        await db
-          .from('broadcast_recipients')
-          .update({
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-            whatsapp_message_id: sentMessageId,
-            error_message: null,
-          })
-          .eq('id', recipient.recipientRowId);
-      } else {
-        await db
-          .from('broadcast_recipients')
-          .update({
-            status: 'failed',
-            error_message: lastError || 'Unknown error',
-          })
-          .eq('id', recipient.recipientRowId);
-      }
+          if (sentMessageId) {
+            sentCount++;
+            await db
+              .from('broadcast_recipients')
+              .update({
+                status: 'sent',
+                sent_at: new Date().toISOString(),
+                whatsapp_message_id: sentMessageId,
+                error_message: null,
+              })
+              .eq('id', recipient.recipientRowId);
+          } else {
+            await db
+              .from('broadcast_recipients')
+              .update({
+                status: 'failed',
+                error_message: lastError || 'Unknown error',
+              })
+              .eq('id', recipient.recipientRowId);
+          }
+        })
+      );
     }
 
     // Terminal status only — counts are trigger-owned (see the note

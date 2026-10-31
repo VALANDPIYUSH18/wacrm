@@ -9,6 +9,21 @@ function getAdminClient() {
   );
 }
 
+function isPlatformAdmin(email?: string, systemRole?: string | null): boolean {
+  if (systemRole === 'superadmin') return true;
+  const adminEmails = (process.env.PLATFORM_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (email && adminEmails.includes(email.toLowerCase())) {
+    return true;
+  }
+  if (process.env.NODE_ENV === 'development' && adminEmails.length === 0) {
+    return true;
+  }
+  return false;
+}
+
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -23,13 +38,13 @@ export async function GET() {
     const { data: profile } = await supabase
       .from('profiles')
       .select('account_role, role')
-      .eq('id', user.id)
-      .single();
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-    // Check if user is owner/superadmin or admin
-    if (profile?.account_role !== 'owner' && profile?.account_role !== 'admin') {
+    // Enforce platform superadmin privileges to prevent multi-tenant data leak
+    if (!isPlatformAdmin(user.email, profile?.role)) {
       return NextResponse.json(
-        { error: 'Forbidden. Owner or Admin privileges required.' },
+        { error: 'Forbidden. Platform Superadmin privileges required.' },
         { status: 403 }
       );
     }
@@ -49,7 +64,7 @@ export async function GET() {
     // 2. Fetch all profiles for member count
     const { data: profiles } = await admin
       .from('profiles')
-      .select('id, account_id, full_name, email:id');
+      .select('id, account_id, full_name, email');
 
     // 3. Fetch WhatsApp connection status
     const { data: waConfigs } = await admin
