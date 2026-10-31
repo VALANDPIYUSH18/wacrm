@@ -284,13 +284,28 @@ export async function sendMessageToConversation(
   // guards against a malformed local row crashing the send-builder.
   let templateRow: MessageTemplate | null = null;
   if (messageType === 'template' && templateName) {
-    const { data } = await db
+    let { data } = await db
       .from('message_templates')
       .select('*')
       .eq('account_id', accountId)
       .eq('name', templateName)
       .eq('language', templateLanguage || 'en_US')
       .maybeSingle();
+
+    // Fall back to any row matching this template name in this account if
+    // language didn't match (e.g. Meta registered 'en' instead of 'en_US').
+    if (!data) {
+      const fallback = await db
+        .from('message_templates')
+        .select('*')
+        .eq('account_id', accountId)
+        .eq('name', templateName)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      data = fallback.data;
+    }
+
     if (data && !isMessageTemplate(data)) {
       throw new SendMessageError(
         'template_malformed',
@@ -308,7 +323,7 @@ export async function sendMessageToConversation(
         accessToken,
         to: phone,
         templateName: templateName!,
-        language: templateLanguage || 'en_US',
+        language: templateLanguage || templateRow?.language || 'en_US',
         template: templateRow ?? undefined,
         messageParams: templateMessageParams ?? undefined,
         params: templateParams || [],
