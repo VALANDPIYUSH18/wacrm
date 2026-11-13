@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemedToaster } from "@/components/themed-toaster";
@@ -107,6 +108,7 @@ export default function RootLayout({
           {children}
           <ThemedToaster />
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
