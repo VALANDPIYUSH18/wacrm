@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
-import { INITIAL_DEMO_PRODUCTS, resetDemoProducts } from '@/lib/commerce/demo-store';
+import { INITIAL_DEMO_PRODUCTS } from '@/lib/commerce/demo-store';
 
 export const DEMO_PRODUCTS = INITIAL_DEMO_PRODUCTS;
 

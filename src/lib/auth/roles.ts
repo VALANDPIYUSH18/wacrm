@@ -107,3 +107,17 @@ export function canDeleteAccount(role: AccountRole): boolean {
 export function canTransferOwnership(role: AccountRole): boolean {
   return role === "owner";
 }
+
+/**
+ * Platform superadmin check.
+ * Validates exclusively against PLATFORM_ADMIN_EMAILS to prevent privilege
+ * escalation via client-side profile role mutations.
+ */
+export function isPlatformAdmin(email?: string | null): boolean {
+  if (!email) return false;
+  const adminEmails = (process.env.PLATFORM_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return adminEmails.includes(email.toLowerCase());
+}

@@ -63,4 +63,32 @@ describe('Phase 3: Inventory and Order Safety', () => {
 
     expect(result.quantity_on_hand).toBe(5);
   });
+
+  it('rejects deduction in fallback path when delta exceeds current stock', async () => {
+    const mockSupabase = {
+      rpc: null, // force fallback path
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'inv-1', quantity_on_hand: 1, reorder_threshold: 5 },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any;
+
+    await expect(
+      adjustInventory(mockSupabase, {
+        accountId: 'acc-1',
+        productId: 'prod-1',
+        quantityOnHandDelta: -2,
+      })
+    ).rejects.toThrow(/insufficient stock/i);
+  });
 });

@@ -62,9 +62,14 @@ export async function POST(request: NextRequest) {
 
     const targetAccountId = accountId || order?.account_id;
 
-    // Security check: must resolve target account and verify HMAC signature with replay protection
+    // Security check: must resolve target account, prevent cross-tenant order spoofing, and verify HMAC
     if (!targetAccountId) {
       return NextResponse.json({ error: 'Unresolvable order account' }, { status: 400 });
+    }
+
+    if (order && accountId && order.account_id !== accountId) {
+      console.warn('Stripe webhook cross-tenant mismatch: order.account_id !== metadata.accountId');
+      return NextResponse.json({ error: 'Order account mismatch' }, { status: 400 });
     }
 
     if (!signatureHeader) {

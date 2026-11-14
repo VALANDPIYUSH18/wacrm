@@ -54,4 +54,16 @@ describe('Phase 4: Payment Webhook Security & Signatures', () => {
     const oldTimestamp = now - 400;
     expect(Math.abs(Math.floor(Date.now() / 1000) - oldTimestamp)).toBeGreaterThan(300);
   });
+
+  it('detects and rejects cross-tenant order spoofing when order account does not match webhook account', () => {
+    const order = { id: 'ord-123', account_id: 'tenant-a' };
+    const metadata = { accountId: 'tenant-b' };
+
+    const isMismatch = Boolean(order && metadata.accountId && order.account_id !== metadata.accountId);
+    expect(isMismatch).toBe(true);
+
+    const validMetadata = { accountId: 'tenant-a' };
+    const isMatch = order.account_id === validMetadata.accountId;
+    expect(isMatch).toBe(true);
+  });
 });

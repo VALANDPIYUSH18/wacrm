@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
-import { updateDemoProduct, deleteDemoProduct } from '@/lib/commerce/demo-store';
 
 /**
  * PATCH /api/products/[id]
@@ -44,11 +43,10 @@ export async function PATCH(
 
     if (error) {
       if (error.message.includes('Could not find the table') || error.code === '42P01') {
-        const updated = updateDemoProduct(accountId, id, updates);
-        if (!updated) {
-          return NextResponse.json({ error: 'Product not found' }, { status: 404 });
-        }
-        return NextResponse.json({ product: updated, isDemoFallback: true });
+        return NextResponse.json(
+          { error: 'Products catalog table is not initialized. Please ensure migration 032 is applied.' },
+          { status: 503 }
+        );
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -79,8 +77,10 @@ export async function DELETE(
 
     if (error) {
       if (error.message.includes('Could not find the table') || error.code === '42P01') {
-        deleteDemoProduct(accountId, id);
-        return NextResponse.json({ success: true, isDemoFallback: true });
+        return NextResponse.json(
+          { error: 'Products catalog table is not initialized. Please ensure migration 032 is applied.' },
+          { status: 503 }
+        );
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

@@ -323,7 +323,7 @@ export async function sendMessageToConversation(
         accessToken,
         to: phone,
         templateName: templateName!,
-        language: templateLanguage || templateRow?.language || 'en_US',
+        language: templateRow?.language || templateLanguage || 'en_US',
         template: templateRow ?? undefined,
         messageParams: templateMessageParams ?? undefined,
         params: templateParams || [],

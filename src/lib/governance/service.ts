@@ -286,7 +286,12 @@ export async function adjustInventory(
       if (params.newQuantityOnHand !== undefined) {
         nextQty = Math.max(0, params.newQuantityOnHand);
       } else if (params.quantityOnHandDelta !== undefined) {
-        nextQty = Math.max(0, existing.quantity_on_hand + params.quantityOnHandDelta);
+        if (existing.quantity_on_hand + params.quantityOnHandDelta < 0) {
+          throw new Error(
+            `Insufficient stock: item has ${existing.quantity_on_hand} units on hand, requested deduction ${Math.abs(params.quantityOnHandDelta)}`
+          );
+        }
+        nextQty = existing.quantity_on_hand + params.quantityOnHandDelta;
       }
 
       const updatePayload: Record<string, unknown> = {

@@ -65,9 +65,14 @@ export async function POST(request: NextRequest) {
 
     const targetAccountId = accountId || order?.account_id;
 
-    // Security check: must resolve target account and verify HMAC signature
+    // Security check: must resolve target account, prevent cross-tenant order spoofing, and verify HMAC
     if (!targetAccountId) {
       return NextResponse.json({ error: 'Unresolvable order account' }, { status: 400 });
+    }
+
+    if (order && accountId && order.account_id !== accountId) {
+      console.warn('Razorpay webhook cross-tenant mismatch: order.account_id !== notes.accountId');
+      return NextResponse.json({ error: 'Order account mismatch' }, { status: 400 });
     }
 
     const config = await getGatewayConfig(targetAccountId, 'razorpay');

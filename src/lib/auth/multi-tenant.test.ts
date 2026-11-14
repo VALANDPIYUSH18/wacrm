@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { hasMinRole, canManageMembers, canEditSettings } from './roles';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { hasMinRole, canManageMembers, canEditSettings, isPlatformAdmin } from './roles';
 
 describe('Phase 1: Multi-Tenant Role & Account Boundary Security', () => {
   it('correctly orders hierarchy: owner > admin > agent > viewer', () => {
@@ -31,25 +31,21 @@ describe('Phase 1: Multi-Tenant Role & Account Boundary Security', () => {
     expect(canEditSettings('viewer')).toBe(false);
   });
 
-  it('verifies platform superadmin check does not permit unauthenticated/unlisted users in any environment', async () => {
-    const isPlatformAdmin = (email?: string, systemRole?: string | null): boolean => {
-      if (systemRole === 'superadmin') return true;
-      const adminEmails = (process.env.PLATFORM_ADMIN_EMAILS || '')
-        .split(',')
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-      if (email && adminEmails.includes(email.toLowerCase())) {
-        return true;
-      }
-      return false;
-    };
+  it('verifies platform superadmin check requires PLATFORM_ADMIN_EMAILS and denies unlisted users', () => {
+    const original = process.env.PLATFORM_ADMIN_EMAILS;
+    process.env.PLATFORM_ADMIN_EMAILS = 'superadmin@platform.com, ops@platform.com';
 
-    // Ordinary user in Tenant A
-    expect(isPlatformAdmin('agent@tenant-a.com', 'user')).toBe(false);
-    expect(isPlatformAdmin('owner@tenant-b.com', 'user')).toBe(false);
-    expect(isPlatformAdmin(undefined, null)).toBe(false);
+    try {
+      // Ordinary users
+      expect(isPlatformAdmin('agent@tenant-a.com')).toBe(false);
+      expect(isPlatformAdmin('owner@tenant-b.com')).toBe(false);
+      expect(isPlatformAdmin(undefined)).toBe(false);
 
-    // Explicit superadmin
-    expect(isPlatformAdmin('random@domain.com', 'superadmin')).toBe(true);
+      // Listed platform superadmins
+      expect(isPlatformAdmin('superadmin@platform.com')).toBe(true);
+      expect(isPlatformAdmin('OPS@PLATFORM.COM')).toBe(true);
+    } finally {
+      process.env.PLATFORM_ADMIN_EMAILS = original;
+    }
   });
 });
